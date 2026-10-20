@@ -16,6 +16,16 @@ DB_PATH = os.path.join("database", "savage.db")
 
 MAX_QUESTIONS = 5
 
+PANEL_IMAGE_URL = (
+    "https://i.postimg.cc/T2q43j4M/"
+    "Chat-GPT-Image-19-avg-2026-g-15-20-33.png"
+)
+
+# Роль, которая выдаётся кандидату при нажатии «Обзвон»
+CALL_ROLE_ID = 1498024705989542011
+
+# Канал, в который всегда вызывается кандидат
+CALL_CHANNEL_ID = 1498022964610863255
 
 DEFAULT_QUESTIONS = {
     1: "Ваш никнейм",
@@ -43,10 +53,6 @@ def init_database():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # --------------------------------------------------------
-    # Настройки
-    # --------------------------------------------------------
-
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ticket_settings (
             guild_id INTEGER PRIMARY KEY,
@@ -57,10 +63,6 @@ def init_database():
             panel_channel_id INTEGER
         )
     """)
-
-    # --------------------------------------------------------
-    # Миграция старой БД
-    # --------------------------------------------------------
 
     cursor.execute(
         "PRAGMA table_info(ticket_settings)"
@@ -82,13 +84,6 @@ def init_database():
             ALTER TABLE ticket_settings
             ADD COLUMN panel_channel_id INTEGER
         """)
-
-    # Старое поле application_channel_id не удаляем,
-    # чтобы старая БД не ломалась.
-
-    # --------------------------------------------------------
-    # Вопросы
-    # --------------------------------------------------------
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ticket_questions (
@@ -114,7 +109,6 @@ def ensure_guild_settings(guild_id: int):
     """, (guild_id,))
 
     if cursor.fetchone() is None:
-
         cursor.execute("""
             INSERT INTO ticket_settings (
                 guild_id,
@@ -134,10 +128,6 @@ def ensure_guild_settings(guild_id: int):
             None
         ))
 
-    # --------------------------------------------------------
-    # Стандартные вопросы
-    # --------------------------------------------------------
-
     for number, question in DEFAULT_QUESTIONS.items():
 
         cursor.execute("""
@@ -151,7 +141,6 @@ def ensure_guild_settings(guild_id: int):
         ))
 
         if cursor.fetchone() is None:
-
             cursor.execute("""
                 INSERT INTO ticket_questions (
                     guild_id,
@@ -272,7 +261,6 @@ def save_staff_role_ids(
     unique_ids = []
 
     for role_id in role_ids:
-
         if role_id not in unique_ids:
             unique_ids.append(role_id)
 
@@ -430,10 +418,6 @@ def get_user_id_from_ticket(
     channel: discord.TextChannel
 ):
 
-    # --------------------------------------------------------
-    # Основной способ — topic
-    # --------------------------------------------------------
-
     if channel.topic:
 
         match = re.search(
@@ -444,10 +428,6 @@ def get_user_id_from_ticket(
         if match:
             return int(match.group(1))
 
-    # --------------------------------------------------------
-    # Запасной вариант
-    # --------------------------------------------------------
-
     match = re.search(
         r"заявка-(\d+)",
         channel.name
@@ -455,10 +435,6 @@ def get_user_id_from_ticket(
 
     if match:
         return int(match.group(1))
-
-    # --------------------------------------------------------
-    # Ищем Discord ID в topic
-    # --------------------------------------------------------
 
     if channel.topic:
 
@@ -527,7 +503,6 @@ def is_staff(
     member: discord.Member,
     staff_role_ids
 ):
-
     if member.guild_permissions.administrator:
         return True
 
@@ -559,7 +534,6 @@ async def close_ticket(
     if applicant:
 
         try:
-
             await channel.set_permissions(
                 applicant,
                 view_channel=False,
@@ -574,7 +548,6 @@ async def close_ticket(
     if closed_category:
 
         try:
-
             await channel.edit(
                 category=closed_category
             )
@@ -584,7 +557,7 @@ async def close_ticket(
 
 
 # ============================================================
-#                  UPDATE APPLICATION MESSAGE
+#              UPDATE APPLICATION MESSAGE
 # ============================================================
 
 async def update_application_message(
@@ -593,15 +566,6 @@ async def update_application_message(
     color: discord.Color,
     result_text: str
 ):
-    """
-    Меняет главное сообщение заявки:
-
-    🟡 На рассмотрении
-    🟢 Принят
-    🔴 Отклонён
-
-    После принятия/отклонения кнопки убираются.
-    """
 
     if not message.embeds:
         return
@@ -615,26 +579,21 @@ async def update_application_message(
         timestamp=old_embed.timestamp
     )
 
-    # --------------------------------------------------------
-    # Thumbnail
-    # --------------------------------------------------------
-
     if old_embed.thumbnail.url:
         embed.set_thumbnail(
             url=old_embed.thumbnail.url
         )
 
-    # --------------------------------------------------------
-    # Переносим существующие поля
-    # --------------------------------------------------------
+    if old_embed.image.url:
+        embed.set_image(
+            url=old_embed.image.url
+        )
 
     for field in old_embed.fields:
 
-        # Старый статус заменяем новым
         if field.name == "Статус":
             continue
 
-        # Старый результат тоже заменяем
         if field.name == "Результат":
             continue
 
@@ -644,29 +603,17 @@ async def update_application_message(
             inline=field.inline
         )
 
-    # --------------------------------------------------------
-    # Новый статус
-    # --------------------------------------------------------
-
     embed.add_field(
         name="Статус",
         value=status,
         inline=False
     )
 
-    # --------------------------------------------------------
-    # Результат
-    # --------------------------------------------------------
-
     embed.add_field(
         name="Результат",
         value=result_text,
         inline=False
     )
-
-    # --------------------------------------------------------
-    # Footer
-    # --------------------------------------------------------
 
     if old_embed.footer.text:
         embed.set_footer(
@@ -684,7 +631,7 @@ async def update_application_message(
 
 
 # ============================================================
-#                         MODAL
+#                         APPLICATION MODAL
 # ============================================================
 
 class ApplicationModal(discord.ui.Modal):
@@ -703,7 +650,6 @@ class ApplicationModal(discord.ui.Modal):
         self.cog = cog
         self.guild_id = guild_id
         self.questions = questions
-
         self.inputs = []
 
         for row in questions[:MAX_QUESTIONS]:
@@ -720,15 +666,9 @@ class ApplicationModal(discord.ui.Modal):
                 label=(
                     f"{number}. {question}"
                 )[:45],
-
-                placeholder=(
-                    "Введите ваш ответ..."
-                ),
-
+                placeholder="Введите ваш ответ...",
                 required=True,
-
                 max_length=1000,
-
                 style=discord.TextStyle.paragraph
             )
 
@@ -746,7 +686,6 @@ class ApplicationModal(discord.ui.Modal):
     ):
 
         try:
-
             await self.cog.create_ticket(
                 interaction,
                 self.questions,
@@ -763,7 +702,7 @@ class ApplicationModal(discord.ui.Modal):
 
 
 # ============================================================
-#                  REJECT MODAL
+#                       REJECT MODAL
 # ============================================================
 
 class RejectModal(discord.ui.Modal):
@@ -785,15 +724,9 @@ class RejectModal(discord.ui.Modal):
 
         self.reason = discord.ui.TextInput(
             label="Причина отказа",
-
-            placeholder=(
-                "Введите причину отказа..."
-            ),
-
+            placeholder="Введите причину отказа...",
             required=True,
-
             max_length=1000,
-
             style=discord.TextStyle.paragraph
         )
 
@@ -825,145 +758,7 @@ class RejectModal(discord.ui.Modal):
 
 
 # ============================================================
-#                    VOICE SELECT
-# ============================================================
-
-class VoiceChannelSelect(
-    discord.ui.Select
-):
-
-    def __init__(
-        self,
-        cog,
-        ticket_channel
-    ):
-
-        self.cog = cog
-        self.ticket_channel = ticket_channel
-
-        guild = ticket_channel.guild
-
-        me = guild.me
-
-        channels = [
-            channel
-            for channel in guild.voice_channels
-            if me
-            and channel.permissions_for(me).connect
-        ]
-
-        options = []
-
-        for channel in channels[:25]:
-
-            options.append(
-                discord.SelectOption(
-                    label=channel.name[:100],
-                    value=str(channel.id),
-                    emoji="🔊"
-                )
-            )
-
-        if not options:
-
-            options.append(
-                discord.SelectOption(
-                    label="Нет доступных голосовых каналов",
-                    value="none"
-                )
-            )
-
-        super().__init__(
-            placeholder="Выберите голосовой канал ожидания...",
-            min_values=1,
-            max_values=1,
-            options=options
-        )
-
-    async def callback(
-        self,
-        interaction: discord.Interaction
-    ):
-
-        if self.values[0] == "none":
-
-            await interaction.response.send_message(
-                "❌ Нет доступных голосовых каналов.",
-                ephemeral=True
-            )
-
-            return
-
-        try:
-
-            channel_id = int(
-                self.values[0]
-            )
-
-        except ValueError:
-
-            await interaction.response.send_message(
-                "❌ Некорректный голосовой канал.",
-                ephemeral=True
-            )
-
-            return
-
-        voice_channel = interaction.guild.get_channel(
-            channel_id
-        )
-
-        if not isinstance(
-            voice_channel,
-            discord.VoiceChannel
-        ):
-
-            await interaction.response.send_message(
-                "❌ Голосовой канал не найден.",
-                ephemeral=True
-            )
-
-            return
-
-        try:
-
-            await self.cog.call_to_voice(
-                interaction,
-                self.ticket_channel,
-                voice_channel
-            )
-
-        except Exception as error:
-
-            await self.cog.safe_error(
-                interaction,
-                error,
-                "обзвон"
-            )
-
-
-class VoiceChannelView(discord.ui.View):
-
-    def __init__(
-        self,
-        cog,
-        ticket_channel
-    ):
-
-        super().__init__(
-            timeout=120
-        )
-
-        self.add_item(
-            VoiceChannelSelect(
-                cog,
-                ticket_channel
-            )
-        )
-
-
-# ============================================================
-#                    PANEL VIEW
+#                     TICKET PANEL VIEW
 # ============================================================
 
 class TicketPanelView(
@@ -984,7 +779,7 @@ class TicketPanelView(
     @discord.ui.button(
         label="Подать заявку",
         emoji="📋",
-        style=discord.ButtonStyle.primary,
+        style=discord.ButtonStyle.secondary,
         custom_id="savage_ticket_create"
     )
     async def create_ticket_button(
@@ -1009,7 +804,7 @@ class TicketPanelView(
 
 
 # ============================================================
-#                    ACTIONS VIEW
+#                     TICKET ACTIONS VIEW
 # ============================================================
 
 class TicketActionsView(
@@ -1039,9 +834,19 @@ class TicketActionsView(
         button: discord.ui.Button
     ):
 
-        await self.cog.start_reject(
-            interaction
-        )
+        try:
+
+            await self.cog.start_reject(
+                interaction
+            )
+
+        except Exception as error:
+
+            await self.cog.safe_error(
+                interaction,
+                error,
+                "кнопка отклонения"
+            )
 
     @discord.ui.button(
         label="Принять",
@@ -1055,9 +860,19 @@ class TicketActionsView(
         button: discord.ui.Button
     ):
 
-        await self.cog.accept_ticket(
-            interaction
-        )
+        try:
+
+            await self.cog.accept_ticket(
+                interaction
+            )
+
+        except Exception as error:
+
+            await self.cog.safe_error(
+                interaction,
+                error,
+                "кнопка принятия"
+            )
 
     @discord.ui.button(
         label="Обзвон",
@@ -1071,13 +886,23 @@ class TicketActionsView(
         button: discord.ui.Button
     ):
 
-        await self.cog.start_call(
-            interaction
-        )
+        try:
+
+            await self.cog.start_call(
+                interaction
+            )
+
+        except Exception as error:
+
+            await self.cog.safe_error(
+                interaction,
+                error,
+                "кнопка обзвона"
+            )
 
 
 # ============================================================
-#                     TICKET COG
+#                       TICKET COG
 # ============================================================
 
 class Tickets(commands.Cog):
@@ -1110,7 +935,7 @@ class Tickets(commands.Cog):
         )
 
     # ========================================================
-    #                    SAFE ERROR
+    #                       SAFE ERROR
     # ========================================================
 
     async def safe_error(
@@ -1158,7 +983,7 @@ class Tickets(commands.Cog):
             )
 
     # ========================================================
-    #                    STAFF CHECK
+    #                       STAFF CHECK
     # ========================================================
 
     async def check_staff(
@@ -1176,10 +1001,6 @@ class Tickets(commands.Cog):
                 )
 
             return False
-
-        get_settings(
-            interaction.guild.id
-        )
 
         staff_roles = get_staff_role_ids(
             interaction.guild.id
@@ -1209,7 +1030,7 @@ class Tickets(commands.Cog):
         return True
 
     # ========================================================
-    #                  OPEN APPLICATION
+    #                    OPEN APPLICATION
     # ========================================================
 
     async def open_application(
@@ -1232,10 +1053,6 @@ class Tickets(commands.Cog):
             guild.id
         )
 
-        # ----------------------------------------------------
-        # Проверяем канал панели
-        # ----------------------------------------------------
-
         panel_channel_id = settings[
             "panel_channel_id"
         ]
@@ -1252,10 +1069,6 @@ class Tickets(commands.Cog):
 
                 return
 
-        # ----------------------------------------------------
-        # Проверяем категорию
-        # ----------------------------------------------------
-
         open_category_id = settings[
             "open_category_id"
         ]
@@ -1271,10 +1084,6 @@ class Tickets(commands.Cog):
 
             return
 
-        # ----------------------------------------------------
-        # Вопросы
-        # ----------------------------------------------------
-
         questions = get_questions(
             guild.id
         )
@@ -1287,10 +1096,6 @@ class Tickets(commands.Cog):
             )
 
             return
-
-        # ----------------------------------------------------
-        # Уже есть заявка?
-        # ----------------------------------------------------
 
         category = guild.get_channel(
             open_category_id
@@ -1316,10 +1121,6 @@ class Tickets(commands.Cog):
 
                     return
 
-        # ----------------------------------------------------
-        # Показываем Modal
-        # ----------------------------------------------------
-
         modal = ApplicationModal(
             self,
             guild.id,
@@ -1331,7 +1132,7 @@ class Tickets(commands.Cog):
         )
 
     # ========================================================
-    #                   CREATE TICKET
+    #                    CREATE TICKET
     # ========================================================
 
     async def create_ticket(
@@ -1387,10 +1188,6 @@ class Tickets(commands.Cog):
 
             return
 
-        # ----------------------------------------------------
-        # Проверка существующей заявки
-        # ----------------------------------------------------
-
         for channel in category.text_channels:
 
             user_id = get_user_id_from_ticket(
@@ -1406,12 +1203,7 @@ class Tickets(commands.Cog):
 
                 return
 
-        # ----------------------------------------------------
-        # Permissions
-        # ----------------------------------------------------
-
         overwrites = {
-
             guild.default_role:
                 discord.PermissionOverwrite(
                     view_channel=False
@@ -1450,10 +1242,6 @@ class Tickets(commands.Cog):
                     )
                 )
 
-        # ----------------------------------------------------
-        # Создание
-        # ----------------------------------------------------
-
         channel_name = clean_channel_name(
             member
         )
@@ -1487,25 +1275,17 @@ class Tickets(commands.Cog):
         except discord.HTTPException as error:
 
             await interaction.response.send_message(
-                f"❌ Discord не смог создать заявку.\n"
+                "❌ Discord не смог создать заявку.\n"
                 f"`{error}`",
                 ephemeral=True
             )
 
             return
 
-        # ----------------------------------------------------
-        # Ответ пользователю
-        # ----------------------------------------------------
-
         await interaction.response.send_message(
             f"✅ Заявка создана: {channel.mention}",
             ephemeral=True
         )
-
-        # ----------------------------------------------------
-        # Embed
-        # ----------------------------------------------------
 
         embed = discord.Embed(
             title="📋 Заявка в S A V A G E",
@@ -1524,10 +1304,6 @@ class Tickets(commands.Cog):
         embed.set_thumbnail(
             url=member.display_avatar.url
         )
-
-        # ----------------------------------------------------
-        # Ответы
-        # ----------------------------------------------------
 
         for question, text_input in zip(
             questions,
@@ -1552,10 +1328,6 @@ class Tickets(commands.Cog):
                 inline=False
             )
 
-        # ----------------------------------------------------
-        # Статус
-        # ----------------------------------------------------
-
         embed.add_field(
             name="Статус",
             value="🟡 На рассмотрении",
@@ -1565,10 +1337,6 @@ class Tickets(commands.Cog):
         embed.set_footer(
             text="S A V A G E • Система заявок"
         )
-
-        # ----------------------------------------------------
-        # Mention staff
-        # ----------------------------------------------------
 
         mentions = [
             member.mention
@@ -1581,7 +1349,6 @@ class Tickets(commands.Cog):
             )
 
             if role:
-
                 mentions.append(
                     role.mention
                 )
@@ -1593,7 +1360,7 @@ class Tickets(commands.Cog):
         )
 
     # ========================================================
-    #                       REJECT
+    #                         REJECT
     # ========================================================
 
     async def start_reject(
@@ -1612,13 +1379,11 @@ class Tickets(commands.Cog):
         ):
             return
 
-        application_message = interaction.message
-
         await interaction.response.send_modal(
             RejectModal(
                 self,
                 interaction.channel,
-                application_message
+                interaction.message
             )
         )
 
@@ -1665,10 +1430,6 @@ class Tickets(commands.Cog):
                 settings["closed_category_id"]
             )
 
-        # ----------------------------------------------------
-        # DM
-        # ----------------------------------------------------
-
         if applicant:
 
             try:
@@ -1692,10 +1453,6 @@ class Tickets(commands.Cog):
             except discord.Forbidden:
                 pass
 
-        # ----------------------------------------------------
-        # Обновляем главное сообщение заявки
-        # ----------------------------------------------------
-
         await update_application_message(
             application_message,
             "🔴 Отклонена",
@@ -1703,19 +1460,11 @@ class Tickets(commands.Cog):
             f"Отклонено по причине: {reason}"
         )
 
-        # ----------------------------------------------------
-        # Закрываем заявку
-        # ----------------------------------------------------
-
         await close_ticket(
             channel,
             applicant,
             closed_category
         )
-
-        # ----------------------------------------------------
-        # Ответ в тикете
-        # ----------------------------------------------------
 
         result_embed = discord.Embed(
             title="❌ Заявка отклонена",
@@ -1739,7 +1488,7 @@ class Tickets(commands.Cog):
         )
 
     # ========================================================
-    #                       ACCEPT
+    #                         ACCEPT
     # ========================================================
 
     async def accept_ticket(
@@ -1824,10 +1573,6 @@ class Tickets(commands.Cog):
 
             return
 
-        # ----------------------------------------------------
-        # Выдача роли
-        # ----------------------------------------------------
-
         try:
 
             await applicant.add_roles(
@@ -1847,10 +1592,6 @@ class Tickets(commands.Cog):
             )
 
             return
-
-        # ----------------------------------------------------
-        # DM
-        # ----------------------------------------------------
 
         try:
 
@@ -1874,20 +1615,12 @@ class Tickets(commands.Cog):
         except discord.Forbidden:
             pass
 
-        # ----------------------------------------------------
-        # Обновляем главное сообщение заявки
-        # ----------------------------------------------------
-
         await update_application_message(
             interaction.message,
             "🟢 Принята",
             discord.Color.green(),
             "Принят"
         )
-
-        # ----------------------------------------------------
-        # Закрытие
-        # ----------------------------------------------------
 
         closed_category = None
 
@@ -1902,10 +1635,6 @@ class Tickets(commands.Cog):
             applicant,
             closed_category
         )
-
-        # ----------------------------------------------------
-        # Финальное сообщение
-        # ----------------------------------------------------
 
         embed = discord.Embed(
             title="✅ Заявка одобрена",
@@ -1929,7 +1658,7 @@ class Tickets(commands.Cog):
         )
 
     # ========================================================
-    #                       CALL
+    #                          CALL
     # ========================================================
 
     async def start_call(
@@ -1950,6 +1679,17 @@ class Tickets(commands.Cog):
         ):
             return
 
+        guild = interaction.guild
+
+        if not guild:
+
+            await interaction.response.send_message(
+                "❌ Сервер не найден.",
+                ephemeral=True
+            )
+
+            return
+
         user_id = get_user_id_from_ticket(
             channel
         )
@@ -1964,72 +1704,7 @@ class Tickets(commands.Cog):
             return
 
         applicant = await find_member(
-            interaction.guild,
-            user_id
-        )
-
-        if not applicant:
-
-            await interaction.response.send_message(
-                "❌ Заявитель не найден.",
-                ephemeral=True
-            )
-
-            return
-
-        guild = interaction.guild
-        me = guild.me
-
-        voice_channels = [
-            vc
-            for vc in guild.voice_channels
-            if me
-            and vc.permissions_for(me).view_channel
-        ]
-
-        if not voice_channels:
-
-            await interaction.response.send_message(
-                "❌ Нет доступных голосовых каналов.",
-                ephemeral=True
-            )
-
-            return
-
-        await interaction.response.send_message(
-            "🎙️ Выберите голосовой канал ожидания, "
-            "куда заявитель должен зайти:",
-
-            view=VoiceChannelView(
-                self,
-                channel
-            ),
-
-            ephemeral=True
-        )
-
-    async def call_to_voice(
-        self,
-        interaction: discord.Interaction,
-        ticket_channel: discord.TextChannel,
-        voice_channel: discord.VoiceChannel
-    ):
-
-        user_id = get_user_id_from_ticket(
-            ticket_channel
-        )
-
-        if not user_id:
-
-            await interaction.response.send_message(
-                "❌ Не удалось определить заявителя.",
-                ephemeral=True
-            )
-
-            return
-
-        applicant = await find_member(
-            interaction.guild,
+            guild,
             user_id
         )
 
@@ -2043,12 +1718,123 @@ class Tickets(commands.Cog):
             return
 
         # ----------------------------------------------------
-        # НИКУДА НЕ ПЕРЕМЕЩАЕМ ПОЛЬЗОВАТЕЛЯ
+        # Получаем фиксированную роль обзвона
         # ----------------------------------------------------
-        #
-        # Бот только отправляет уведомление в заявку.
-        # Заявитель самостоятельно заходит в выбранный
-        # голосовой канал и ждёт рекрутера.
+
+        call_role = guild.get_role(
+            CALL_ROLE_ID
+        )
+
+        if not call_role:
+
+            await interaction.response.send_message(
+                "❌ Роль для обзвона не найдена.\n"
+                f"ID роли: `{CALL_ROLE_ID}`",
+                ephemeral=True
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # Выдаём кандидату роль
+        # ----------------------------------------------------
+
+        if call_role not in applicant.roles:
+
+            try:
+
+                await applicant.add_roles(
+                    call_role,
+                    reason=(
+                        f"Вызов на обзвон. "
+                        f"Рекрутер: {interaction.user}"
+                    )
+                )
+
+            except discord.Forbidden:
+
+                await interaction.response.send_message(
+                    "❌ Бот не может выдать кандидату "
+                    "роль обзвона.\n\n"
+                    "Проверьте:\n"
+                    "• право **Управление ролями**;\n"
+                    "• роль бота должна находиться выше "
+                    "роли кандидата.",
+                    ephemeral=True
+                )
+
+                return
+
+            except discord.HTTPException as error:
+
+                await interaction.response.send_message(
+                    "❌ Discord не смог выдать роль.\n"
+                    f"`{error}`",
+                    ephemeral=True
+                )
+
+                return
+
+        # ----------------------------------------------------
+        # Получаем фиксированный канал обзвона
+        # ----------------------------------------------------
+
+        call_channel = guild.get_channel(
+            CALL_CHANNEL_ID
+        )
+
+        if not call_channel:
+
+            try:
+
+                call_channel = await guild.fetch_channel(
+                    CALL_CHANNEL_ID
+                )
+
+            except discord.NotFound:
+
+                await interaction.response.send_message(
+                    "❌ Канал обзвона не найден.\n"
+                    f"ID канала: `{CALL_CHANNEL_ID}`",
+                    ephemeral=True
+                )
+
+                return
+
+            except discord.Forbidden:
+
+                await interaction.response.send_message(
+                    "❌ Бот не имеет доступа к каналу обзвона.",
+                    ephemeral=True
+                )
+
+                return
+
+            except discord.HTTPException as error:
+
+                await interaction.response.send_message(
+                    "❌ Не удалось получить канал обзвона.\n"
+                    f"`{error}`",
+                    ephemeral=True
+                )
+
+                return
+
+        if not isinstance(
+            call_channel,
+            discord.VoiceChannel
+        ):
+
+            await interaction.response.send_message(
+                "❌ Указанный канал обзвона "
+                "не является голосовым каналом.",
+                ephemeral=True
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # Отправляем приглашение кандидату
         # ----------------------------------------------------
 
         embed = discord.Embed(
@@ -2058,7 +1844,7 @@ class Tickets(commands.Cog):
                 f"{applicant.mention}, вас готовы "
                 f"принять на обзвон!\n\n"
                 f"🎙️ **Зайдите в голосовой канал:** "
-                f"{voice_channel.mention}\n\n"
+                f"{call_channel.mention}\n\n"
                 f"После подключения ожидайте рекрутера.\n"
                 f"**Рекрутер:** "
                 f"{interaction.user.mention}"
@@ -2071,11 +1857,7 @@ class Tickets(commands.Cog):
             text="S A V A G E • Обзвон"
         )
 
-        # ----------------------------------------------------
-        # Отправляем уведомление в заявку
-        # ----------------------------------------------------
-
-        await ticket_channel.send(
+        await channel.send(
             content=applicant.mention,
             embed=embed
         )
@@ -2084,16 +1866,14 @@ class Tickets(commands.Cog):
         # Ответ рекрутеру
         # ----------------------------------------------------
 
-        await interaction.response.edit_message(
-            content=(
-                f"✅ Уведомление отправлено "
-                f"{applicant.mention}.\n\n"
-                f"🎙️ Канал ожидания: "
-                f"{voice_channel.mention}\n\n"
-                f"Пользователь **не был перемещён**. "
-                f"Он должен самостоятельно зайти в канал."
+        await interaction.response.send_message(
+            (
+                f"✅ Кандидат {applicant.mention} "
+                f"вызван на обзвон.\n\n"
+                f"🎙️ Канал: {call_channel.mention}\n"
+                f"🎖️ Роль выдана: {call_role.mention}"
             ),
-            view=None
+            ephemeral=True
         )
 
     # ========================================================
@@ -2106,7 +1886,7 @@ class Tickets(commands.Cog):
     )
 
     # ========================================================
-    #                    STAFF ADD
+    #                    ADD STAFF ROLE
     # ========================================================
 
     @ticket.command(
@@ -2131,20 +1911,6 @@ class Tickets(commands.Cog):
                 ephemeral=True
             )
 
-            role_ids = get_staff_role_ids(
-                interaction.guild.id
-            )
-
-            if role.id in role_ids:
-
-                await interaction.followup.send(
-                    f"ℹ️ Роль {role.mention} уже является "
-                    "ролью рекрутов.",
-                    ephemeral=True
-                )
-
-                return
-
             add_staff_role(
                 interaction.guild.id,
                 role.id
@@ -2165,7 +1931,7 @@ class Tickets(commands.Cog):
             )
 
     # ========================================================
-    #                    STAFF REMOVE
+    #                   REMOVE STAFF ROLE
     # ========================================================
 
     @ticket.command(
@@ -2190,20 +1956,6 @@ class Tickets(commands.Cog):
                 ephemeral=True
             )
 
-            role_ids = get_staff_role_ids(
-                interaction.guild.id
-            )
-
-            if role.id not in role_ids:
-
-                await interaction.followup.send(
-                    f"ℹ️ Роль {role.mention} "
-                    "не является ролью рекрутов.",
-                    ephemeral=True
-                )
-
-                return
-
             remove_staff_role(
                 interaction.guild.id,
                 role.id
@@ -2224,7 +1976,7 @@ class Tickets(commands.Cog):
             )
 
     # ========================================================
-    #                    STAFF LIST
+    #                   LIST STAFF ROLES
     # ========================================================
 
     @ticket.command(
@@ -2239,78 +1991,60 @@ class Tickets(commands.Cog):
         interaction: discord.Interaction
     ):
 
-        try:
+        role_ids = get_staff_role_ids(
+            interaction.guild.id
+        )
 
-            await interaction.response.defer(
+        if not role_ids:
+
+            await interaction.response.send_message(
+                "ℹ️ Роли рекрутов не настроены.",
                 ephemeral=True
             )
 
-            role_ids = get_staff_role_ids(
-                interaction.guild.id
+            return
+
+        mentions = []
+
+        for role_id in role_ids:
+
+            role = interaction.guild.get_role(
+                role_id
             )
 
-            if not role_ids:
-
-                text = "❌ Роли рекрутов не установлены."
-
+            if role:
+                mentions.append(
+                    role.mention
+                )
             else:
-
-                lines = []
-
-                for role_id in role_ids:
-
-                    role = interaction.guild.get_role(
-                        role_id
-                    )
-
-                    if role:
-                        lines.append(
-                            f"• {role.mention}"
-                        )
-
-                    else:
-                        lines.append(
-                            f"• `роль {role_id}` — не найдена"
-                        )
-
-                text = "\n".join(
-                    lines
+                mentions.append(
+                    f"`{role_id}`"
                 )
 
-            embed = discord.Embed(
-                title="👮 Роли рекрутов",
-                description=text,
-                color=discord.Color.blurple()
-            )
-
-            await interaction.followup.send(
-                embed=embed,
-                ephemeral=True
-            )
-
-        except Exception as error:
-
-            await self.safe_error(
-                interaction,
-                error,
-                "staff-roles"
-            )
+        await interaction.response.send_message(
+            "👥 **Роли рекрутов:**\n"
+            + "\n".join(
+                f"• {role}"
+                for role in mentions
+            ),
+            ephemeral=True
+        )
 
     # ========================================================
-    #                  MEMBER ROLE
+    #                    SET MEMBER ROLE
     # ========================================================
 
     @ticket.command(
         name="set-member-role",
-        description="Назначить роль принятого игрока"
+        description="Установить роль принятого игрока"
     )
     @app_commands.describe(
-        role="Роль, выдаваемая после принятия"
+        role="Роль, которая выдаётся после принятия"
     )
     @app_commands.default_permissions(
         administrator=True
     )
-    async def set_member_role(
+    async def set_member_role_command(
         self,
         interaction: discord.Interaction,
         role: discord.Role
@@ -2343,20 +2077,20 @@ class Tickets(commands.Cog):
             )
 
     # ========================================================
-    #                  OPEN CATEGORY
+    #                    SET OPEN CATEGORY
     # ========================================================
 
     @ticket.command(
         name="set-open-category",
-        description="Назначить категорию новых заявок"
+        description="Установить категорию новых заявок"
     )
     @app_commands.describe(
-        category="Категория для новых заявок"
+        category="Категория, где будут создаваться заявки"
     )
     @app_commands.default_permissions(
         administrator=True
     )
-    async def set_open_category(
+    async def set_open_category_command(
         self,
         interaction: discord.Interaction,
         category: discord.CategoryChannel
@@ -2389,20 +2123,20 @@ class Tickets(commands.Cog):
             )
 
     # ========================================================
-    #                  CLOSED CATEGORY
+    #                   SET CLOSED CATEGORY
     # ========================================================
 
     @ticket.command(
         name="set-closed-category",
-        description="Назначить категорию закрытых заявок"
+        description="Установить категорию закрытых заявок"
     )
     @app_commands.describe(
-        category="Категория закрытых заявок"
+        category="Категория для закрытых заявок"
     )
     @app_commands.default_permissions(
         administrator=True
     )
-    async def set_closed_category(
+    async def set_closed_category_command(
         self,
         interaction: discord.Interaction,
         category: discord.CategoryChannel
@@ -2435,12 +2169,12 @@ class Tickets(commands.Cog):
             )
 
     # ========================================================
-    #                    PANEL CHANNEL
+    #                   SET PANEL CHANNEL
     # ========================================================
 
     @ticket.command(
         name="set-panel-channel",
-        description="Назначить единый канал для подачи заявок"
+        description="Установить канал панели заявок"
     )
     @app_commands.describe(
         channel="Канал, где будет находиться панель"
@@ -2448,7 +2182,7 @@ class Tickets(commands.Cog):
     @app_commands.default_permissions(
         administrator=True
     )
-    async def set_panel_channel(
+    async def set_panel_channel_command(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel
@@ -2467,10 +2201,8 @@ class Tickets(commands.Cog):
             )
 
             await interaction.followup.send(
-                f"✅ Канал заявок установлен: "
-                f"{channel.mention}\n\n"
-                "Теперь кнопка подачи заявки будет "
-                "работать только в этом канале.",
+                f"✅ Канал панели заявок: "
+                f"{channel.mention}",
                 ephemeral=True
             )
 
@@ -2483,367 +2215,146 @@ class Tickets(commands.Cog):
             )
 
     # ========================================================
-    #                       SETTINGS
+    #                    SHOW SETTINGS
     # ========================================================
 
     @ticket.command(
         name="settings",
-        description="Показать настройки системы заявок"
+        description="Показать настройки тикетов"
     )
     @app_commands.default_permissions(
         administrator=True
     )
-    async def ticket_settings(
+    async def settings_command(
         self,
         interaction: discord.Interaction
     ):
 
-        try:
+        settings = get_settings(
+            interaction.guild.id
+        )
 
-            await interaction.response.defer(
-                ephemeral=True
-            )
+        staff_roles = get_staff_role_ids(
+            interaction.guild.id
+        )
 
-            settings = get_settings(
-                interaction.guild.id
-            )
+        staff_text = "Не настроено"
 
-            # -------------------------------------------------
-            # Роли
-            # -------------------------------------------------
+        if staff_roles:
 
-            staff_role_ids = get_staff_role_ids(
-                interaction.guild.id
-            )
+            staff_mentions = []
 
-            if staff_role_ids:
-
-                staff_text = []
-
-                for role_id in staff_role_ids:
-
-                    role = interaction.guild.get_role(
-                        role_id
-                    )
-
-                    if role:
-                        staff_text.append(
-                            role.mention
-                        )
-                    else:
-                        staff_text.append(
-                            f"`{role_id}` — не найдена"
-                        )
-
-                staff_value = "\n".join(
-                    staff_text
-                )
-
-            else:
-
-                staff_value = "❌ Не установлено"
-
-            member_role_id = settings[
-                "member_role_id"
-            ]
-
-            if member_role_id:
+            for role_id in staff_roles:
 
                 role = interaction.guild.get_role(
-                    member_role_id
+                    role_id
                 )
 
-                member_value = (
-                    role.mention
-                    if role
-                    else "❌ Роль не найдена"
+                if role:
+                    staff_mentions.append(
+                        role.mention
+                    )
+
+            if staff_mentions:
+                staff_text = ", ".join(
+                    staff_mentions
                 )
 
-            else:
+        member_role = None
 
-                member_value = "❌ Не установлено"
+        if settings["member_role_id"]:
+            member_role = interaction.guild.get_role(
+                settings["member_role_id"]
+            )
 
-            # -------------------------------------------------
-            # Каналы
-            # -------------------------------------------------
+        open_category = None
 
-            def channel_text(channel_id):
+        if settings["open_category_id"]:
+            open_category = interaction.guild.get_channel(
+                settings["open_category_id"]
+            )
 
-                if not channel_id:
-                    return "❌ Не установлено"
+        closed_category = None
 
-                channel = interaction.guild.get_channel(
-                    channel_id
+        if settings["closed_category_id"]:
+            closed_category = interaction.guild.get_channel(
+                settings["closed_category_id"]
+            )
+
+        panel_channel = None
+
+        if settings["panel_channel_id"]:
+            panel_channel = interaction.guild.get_channel(
+                settings["panel_channel_id"]
+            )
+
+        embed = discord.Embed(
+            title="⚙️ Настройки тикетов",
+            color=discord.Color.blurple()
+        )
+
+        embed.add_field(
+            name="👥 Рекрутеры",
+            value=staff_text,
+            inline=False
+        )
+
+        embed.add_field(
+            name="🎖️ Роль принятого",
+            value=(
+                member_role.mention
+                if member_role
+                else "Не настроено"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="📂 Открытые заявки",
+            value=(
+                open_category.mention
+                if isinstance(
+                    open_category,
+                    discord.CategoryChannel
                 )
+                else "Не настроено"
+            ),
+            inline=False
+        )
 
-                if channel:
-                    return channel.mention
+        embed.add_field(
+            name="📁 Закрытые заявки",
+            value=(
+                closed_category.mention
+                if isinstance(
+                    closed_category,
+                    discord.CategoryChannel
+                )
+                else "Не настроено"
+            ),
+            inline=False
+        )
 
-                return "❌ Канал не найден"
+        embed.add_field(
+            name="📋 Панель",
+            value=(
+                panel_channel.mention
+                if isinstance(
+                    panel_channel,
+                    discord.TextChannel
+                )
+                else "Не настроено"
+            ),
+            inline=False
+        )
 
-            embed = discord.Embed(
-                title="S A V A G E • НАСТРОЙКИ ЗАЯВОК",
-
-                description=(
-                    "Текущая конфигурация системы."
-                ),
-
-                color=discord.Color.blurple()
-            )
-
-            embed.add_field(
-                name="👮 Роли рекрутов",
-                value=staff_value,
-                inline=False
-            )
-
-            embed.add_field(
-                name="♟ Роль принятого игрока",
-                value=member_value,
-                inline=False
-            )
-
-            embed.add_field(
-                name="📂 Новые заявки",
-                value=channel_text(
-                    settings["open_category_id"]
-                ),
-                inline=False
-            )
-
-            embed.add_field(
-                name="🗄️ Закрытые заявки",
-                value=channel_text(
-                    settings["closed_category_id"]
-                ),
-                inline=False
-            )
-
-            embed.add_field(
-                name="📋 Канал подачи заявки",
-                value=channel_text(
-                    settings["panel_channel_id"]
-                ),
-                inline=False
-            )
-
-            await interaction.followup.send(
-                embed=embed,
-                ephemeral=True
-            )
-
-        except Exception as error:
-
-            await self.safe_error(
-                interaction,
-                error,
-                "ticket settings"
-            )
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
 
     # ========================================================
-    #                  QUESTION ADD
-    # ========================================================
-
-    @ticket.command(
-        name="question-add",
-        description="Добавить или заменить вопрос"
-    )
-    @app_commands.describe(
-        number="Номер вопроса от 1 до 5",
-        question="Текст вопроса"
-    )
-    @app_commands.default_permissions(
-        administrator=True
-    )
-    async def question_add(
-        self,
-        interaction: discord.Interaction,
-        number: app_commands.Range[int, 1, 5],
-        question: str
-    ):
-
-        try:
-
-            await interaction.response.defer(
-                ephemeral=True
-            )
-
-            question = question.strip()
-
-            if not question:
-
-                await interaction.followup.send(
-                    "❌ Вопрос не может быть пустым.",
-                    ephemeral=True
-                )
-
-                return
-
-            if len(question) > 100:
-
-                await interaction.followup.send(
-                    "❌ Вопрос слишком длинный. "
-                    "Максимум 100 символов.",
-                    ephemeral=True
-                )
-
-                return
-
-            add_question(
-                interaction.guild.id,
-                number,
-                question
-            )
-
-            await interaction.followup.send(
-                f"✅ Вопрос №{number} установлен:\n"
-                f"**{question}**",
-                ephemeral=True
-            )
-
-        except Exception as error:
-
-            await self.safe_error(
-                interaction,
-                error,
-                "question-add"
-            )
-
-    # ========================================================
-    #                  QUESTION REMOVE
-    # ========================================================
-
-    @ticket.command(
-        name="question-remove",
-        description="Удалить вопрос"
-    )
-    @app_commands.describe(
-        number="Номер вопроса"
-    )
-    @app_commands.default_permissions(
-        administrator=True
-    )
-    async def question_remove(
-        self,
-        interaction: discord.Interaction,
-        number: app_commands.Range[int, 1, 5]
-    ):
-
-        try:
-
-            await interaction.response.defer(
-                ephemeral=True
-            )
-
-            question = get_question(
-                interaction.guild.id,
-                number
-            )
-
-            if not question:
-
-                await interaction.followup.send(
-                    f"❌ Вопрос №{number} не найден.",
-                    ephemeral=True
-                )
-
-                return
-
-            delete_question(
-                interaction.guild.id,
-                number
-            )
-
-            await interaction.followup.send(
-                f"✅ Вопрос №{number} удалён.",
-                ephemeral=True
-            )
-
-        except Exception as error:
-
-            await self.safe_error(
-                interaction,
-                error,
-                "question-remove"
-            )
-
-    # ========================================================
-    #                  QUESTION EDIT
-    # ========================================================
-
-    @ticket.command(
-        name="question-edit",
-        description="Изменить существующий вопрос"
-    )
-    @app_commands.describe(
-        number="Номер вопроса",
-        question="Новый текст вопроса"
-    )
-    @app_commands.default_permissions(
-        administrator=True
-    )
-    async def question_edit(
-        self,
-        interaction: discord.Interaction,
-        number: app_commands.Range[int, 1, 5],
-        question: str
-    ):
-
-        try:
-
-            await interaction.response.defer(
-                ephemeral=True
-            )
-
-            old_question = get_question(
-                interaction.guild.id,
-                number
-            )
-
-            if not old_question:
-
-                await interaction.followup.send(
-                    f"❌ Вопрос №{number} "
-                    "не существует.",
-                    ephemeral=True
-                )
-
-                return
-
-            question = question.strip()
-
-            if not question:
-
-                await interaction.followup.send(
-                    "❌ Вопрос не может быть пустым.",
-                    ephemeral=True
-                )
-
-                return
-
-            add_question(
-                interaction.guild.id,
-                number,
-                question
-            )
-
-            await interaction.followup.send(
-                f"✅ Вопрос №{number} изменён.\n\n"
-                f"**Было:** {old_question}\n"
-                f"**Стало:** {question}",
-                ephemeral=True
-            )
-
-        except Exception as error:
-
-            await self.safe_error(
-                interaction,
-                error,
-                "question-edit"
-            )
-
-    # ========================================================
-    #                     QUESTIONS
+    #                    LIST QUESTIONS
     # ========================================================
 
     @ticket.command(
@@ -2853,62 +2364,126 @@ class Tickets(commands.Cog):
     @app_commands.default_permissions(
         administrator=True
     )
-    async def questions(
+    async def questions_command(
         self,
         interaction: discord.Interaction
     ):
 
-        try:
+        questions = get_questions(
+            interaction.guild.id
+        )
 
-            await interaction.response.defer(
+        if not questions:
+
+            await interaction.response.send_message(
+                "❌ Вопросов нет.",
                 ephemeral=True
             )
 
-            questions = get_questions(
-                interaction.guild.id
+            return
+
+        lines = []
+
+        for row in questions:
+
+            lines.append(
+                f"**{row['question_number']}.** "
+                f"{row['question']}"
             )
 
-            embed = discord.Embed(
-                title="S A V A G E • ВОПРОСЫ ЗАЯВКИ",
-                color=discord.Color.blurple()
-            )
-
-            if not questions:
-
-                embed.description = (
-                    "❌ Вопросов нет."
-                )
-
-            else:
-
-                for row in questions:
-
-                    embed.add_field(
-                        name=(
-                            f"Вопрос №"
-                            f"{row['question_number']}"
-                        ),
-
-                        value=row["question"],
-
-                        inline=False
-                    )
-
-            await interaction.followup.send(
-                embed=embed,
-                ephemeral=True
-            )
-
-        except Exception as error:
-
-            await self.safe_error(
-                interaction,
-                error,
-                "questions"
-            )
+        await interaction.response.send_message(
+            "📝 **Вопросы заявки:**\n\n"
+            + "\n".join(lines),
+            ephemeral=True
+        )
 
     # ========================================================
-    #                     SEND PANEL
+    #                    ADD QUESTION
+    # ========================================================
+
+    @ticket.command(
+        name="add-question",
+        description="Добавить или изменить вопрос"
+    )
+    @app_commands.describe(
+        number="Номер вопроса от 1 до 5",
+        question="Текст вопроса"
+    )
+    @app_commands.default_permissions(
+        administrator=True
+    )
+    async def add_question_command(
+        self,
+        interaction: discord.Interaction,
+        number: app_commands.Range[int, 1, 5],
+        question: str
+    ):
+
+        question = question.strip()
+
+        if not question:
+
+            await interaction.response.send_message(
+                "❌ Вопрос не может быть пустым.",
+                ephemeral=True
+            )
+
+            return
+
+        if len(question) > 200:
+
+            await interaction.response.send_message(
+                "❌ Вопрос слишком длинный. "
+                "Максимум 200 символов.",
+                ephemeral=True
+            )
+
+            return
+
+        add_question(
+            interaction.guild.id,
+            number,
+            question
+        )
+
+        await interaction.response.send_message(
+            f"✅ Вопрос №{number} сохранён:\n"
+            f"**{question}**",
+            ephemeral=True
+        )
+
+    # ========================================================
+    #                    DELETE QUESTION
+    # ========================================================
+
+    @ticket.command(
+        name="delete-question",
+        description="Удалить вопрос"
+    )
+    @app_commands.describe(
+        number="Номер вопроса от 1 до 5"
+    )
+    @app_commands.default_permissions(
+        administrator=True
+    )
+    async def delete_question_command(
+        self,
+        interaction: discord.Interaction,
+        number: app_commands.Range[int, 1, 5]
+    ):
+
+        delete_question(
+            interaction.guild.id,
+            number
+        )
+
+        await interaction.response.send_message(
+            f"✅ Вопрос №{number} удалён.",
+            ephemeral=True
+        )
+
+    # ========================================================
+    #                    SEND PANEL
     # ========================================================
 
     @ticket.command(
@@ -2964,17 +2539,31 @@ class Tickets(commands.Cog):
                 return
 
             embed = discord.Embed(
-                title="📋 Вступление в S A V A G E",
+                title="ТИКЕТЫ В СЕМЬЮ SAVAGE",
 
                 description=(
-                    "Хочешь вступить в нашу семью?\n\n"
+                    "## Требования:\n"
+                    "> Возраст 15+\n"
+                    "> Активность и участие во "
+                    "фракционном/семейном контенте.\n"
+                    "> Готовность сменить фамилию.\n"
+                    "> Персонаж с 5 уровнем.\n\n"
+
+                    "## Что мы можем предложить:\n"
+                    "> Дружный состав семьи.\n"
+                    "> Опытный high стак.\n"
+                    "> Блат во фракциях.\n"
+                    "> Премиальный автопарк.\n\n"
+
                     "Нажми кнопку **«Подать заявку»** "
-                    "ниже и заполни небольшую анкету.\n\n"
-                    "После отправки с тобой свяжется "
-                    "рекрутер."
+                    "ниже, чтобы заполнить анкету."
                 ),
 
-                color=discord.Color.blurple()
+                color=discord.Color.from_rgb(0, 0, 0)
+            )
+
+            embed.set_image(
+                url=PANEL_IMAGE_URL
             )
 
             embed.set_footer(
@@ -2987,8 +2576,8 @@ class Tickets(commands.Cog):
             )
 
             await interaction.followup.send(
-                f"✅ Панель опубликована в "
-                f"{channel.mention}.",
+                f"✅ Панель опубликована "
+                f"в {channel.mention}.",
                 ephemeral=True
             )
 
@@ -3006,7 +2595,6 @@ class Tickets(commands.Cog):
 # ============================================================
 
 async def setup(bot):
-
     await bot.add_cog(
         Tickets(bot)
     )
