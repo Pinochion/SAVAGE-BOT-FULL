@@ -61,9 +61,32 @@ def init_warn_database():
             user_id INTEGER NOT NULL,
             moderator_id INTEGER NOT NULL,
             reason TEXT NOT NULL,
+            price INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         )
     """)
+
+    # --------------------------------------------------------
+    # Миграция старой таблицы
+    # --------------------------------------------------------
+    # Если таблица warns уже существовала без price,
+    # добавляем колонку автоматически.
+
+    cursor.execute("""
+        PRAGMA table_info(warns)
+    """)
+
+    columns = {
+        row["name"]
+        for row in cursor.fetchall()
+    }
+
+    if "price" not in columns:
+
+        cursor.execute("""
+            ALTER TABLE warns
+            ADD COLUMN price INTEGER NOT NULL DEFAULT 0
+        """)
 
     conn.commit()
     conn.close()
@@ -73,7 +96,9 @@ def init_warn_database():
 #                    STAFF ROLES DATABASE
 # ============================================================
 
-def get_warn_staff_roles(guild_id: int):
+def get_warn_staff_roles(
+    guild_id: int
+):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -82,7 +107,9 @@ def get_warn_staff_roles(guild_id: int):
         SELECT role_id
         FROM warn_staff_roles
         WHERE guild_id = ?
-    """, (guild_id,))
+    """, (
+        guild_id,
+    ))
 
     rows = cursor.fetchall()
 
@@ -172,7 +199,8 @@ def add_warn(
     guild_id: int,
     user_id: int,
     moderator_id: int,
-    reason: str
+    reason: str,
+    price: int
 ):
 
     conn = get_connection()
@@ -184,14 +212,16 @@ def add_warn(
             user_id,
             moderator_id,
             reason,
+            price,
             created_at
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
     """, (
         guild_id,
         user_id,
         moderator_id,
         reason,
+        price,
         datetime.utcnow().isoformat()
     ))
 
@@ -276,8 +306,12 @@ def is_warn_staff(
     member: discord.Member
 ):
 
-    # Администратор и роли рекрутов из общей панели всегда могут управлять WARN.
-    if member.guild_permissions.administrator or is_recruiter(member):
+    # Администратор и роли рекрутов из общей панели
+    # всегда могут управлять WARN.
+    if (
+        member.guild_permissions.administrator
+        or is_recruiter(member)
+    ):
         return True
 
     role_ids = get_warn_staff_roles(
@@ -303,7 +337,9 @@ def is_warn_staff(
 #                       WARN COLOR
 # ============================================================
 
-def get_warn_color(count: int):
+def get_warn_color(
+    count: int
+):
 
     if count <= 1:
         return discord.Color.gold()
@@ -320,7 +356,10 @@ def get_warn_color(count: int):
 
 class Warns(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(
+        self,
+        bot
+    ):
 
         self.bot = bot
 
@@ -337,15 +376,19 @@ class Warns(commands.Cog):
     # ========================================================
 
     @tasks.loop(minutes=10)
-    async def remove_expired_task(self):
+    async def remove_expired_task(
+        self
+    ):
 
         try:
 
             deleted = remove_expired_warns()
 
             if deleted:
+
                 print(
-                    f"🧹 Автоматически снято WARN'ов: {deleted}"
+                    f"🧹 Автоматически снято WARN'ов: "
+                    f"{deleted}"
                 )
 
         except Exception as error:
@@ -357,7 +400,9 @@ class Warns(commands.Cog):
             )
 
     @remove_expired_task.before_loop
-    async def before_remove_expired_task(self):
+    async def before_remove_expired_task(
+        self
+    ):
 
         await self.bot.wait_until_ready()
 
@@ -414,13 +459,15 @@ class Warns(commands.Cog):
     )
     @app_commands.describe(
         user="Пользователь, которому выдаётся WARN",
-        reason="Причина WARN"
+        reason="Причина WARN",
+        price="Цена WARN"
     )
     async def warn_command(
         self,
         interaction: discord.Interaction,
         user: discord.Member,
-        reason: str
+        reason: str,
+        price: int
     ):
 
         try:
@@ -430,7 +477,10 @@ class Warns(commands.Cog):
             ):
                 return
 
-            # Нельзя варнить самого бота
+            # ------------------------------------------------
+            # Нельзя варнить бота
+            # ------------------------------------------------
+
             if user.bot:
 
                 await interaction.response.send_message(
@@ -440,7 +490,10 @@ class Warns(commands.Cog):
 
                 return
 
+            # ------------------------------------------------
             # Нельзя варнить себя
+            # ------------------------------------------------
+
             if user.id == interaction.user.id:
 
                 await interaction.response.send_message(
@@ -449,6 +502,23 @@ class Warns(commands.Cog):
                 )
 
                 return
+
+            # ------------------------------------------------
+            # Проверяем цену
+            # ------------------------------------------------
+
+            if price < 0:
+
+                await interaction.response.send_message(
+                    "❌ Цена WARN не может быть отрицательной.",
+                    ephemeral=True
+                )
+
+                return
+
+            # ------------------------------------------------
+            # Проверяем причину
+            # ------------------------------------------------
 
             reason = reason.strip()
 
@@ -489,8 +559,13 @@ class Warns(commands.Cog):
                 interaction.guild.id,
                 user.id,
                 interaction.user.id,
-                reason
+                reason,
+                price
             )
+
+            # ------------------------------------------------
+            # Получаем обновлённые WARN
+            # ------------------------------------------------
 
             warns = get_active_warns(
                 interaction.guild.id,
@@ -515,7 +590,8 @@ class Warns(commands.Cog):
                 f"```\n"
                 f"WARN был выдан: "
                 f"{interaction.user.mention}\n"
-                f"WARN'ов: **{count}/3**"
+                f"WARN'ов: **{count}/3**\n"
+                f"💰 Цена WARN: **{price:,}$**"
             )
 
             if count >= 3:
@@ -541,13 +617,45 @@ class Warns(commands.Cog):
                 text="S A V A G E • Система WARN"
             )
 
-            cfg = get_config(interaction.guild.id)
-            warn_channel = interaction.guild.get_channel(cfg.get('warn_channel_id')) if cfg.get('warn_channel_id') else None
-            if isinstance(warn_channel, discord.TextChannel) and warn_channel.id != interaction.channel.id:
-                await warn_channel.send(embed=embed)
-                await interaction.response.send_message(f'✅ WARN выдан и отправлен в {warn_channel.mention}.', ephemeral=True)
+            # ------------------------------------------------
+            # Отправляем WARN в настроенный канал
+            # ------------------------------------------------
+
+            cfg = get_config(
+                interaction.guild.id
+            )
+
+            warn_channel = (
+                interaction.guild.get_channel(
+                    cfg.get("warn_channel_id")
+                )
+                if cfg.get("warn_channel_id")
+                else None
+            )
+
+            if (
+                isinstance(
+                    warn_channel,
+                    discord.TextChannel
+                )
+                and warn_channel.id != interaction.channel.id
+            ):
+
+                await warn_channel.send(
+                    embed=embed
+                )
+
+                await interaction.response.send_message(
+                    f"✅ WARN выдан и отправлен "
+                    f"в {warn_channel.mention}.",
+                    ephemeral=True
+                )
+
             else:
-                await interaction.response.send_message(embed=embed)
+
+                await interaction.response.send_message(
+                    embed=embed
+                )
 
             # ------------------------------------------------
             # DM только при 3/3
@@ -568,7 +676,8 @@ class Warns(commands.Cog):
                             f"WARN был выдан: "
                             f"{interaction.user.mention} "
                             f"| {interaction.user.display_name}\n"
-                            f"WARN'ов: **{count}/3**\n\n"
+                            f"WARN'ов: **{count}/3**\n"
+                            f"💰 Цена WARN: **{price:,}$**\n\n"
                             f"В связи с накоплением 3/3 WARN'ов "
                             f"нам придётся попрощаться. "
                             f"Удачи!"
@@ -683,16 +792,46 @@ class Warns(commands.Cog):
                     f"WARN'ов: **{count}/3**\n"
                     f"Снял: {interaction.user.mention}"
                 ),
-                color=get_warn_color(count)
+                color=get_warn_color(
+                    count
+                )
             )
 
-            cfg = get_config(interaction.guild.id)
-            warn_channel = interaction.guild.get_channel(cfg.get('warn_channel_id')) if cfg.get('warn_channel_id') else None
-            if isinstance(warn_channel, discord.TextChannel) and warn_channel.id != interaction.channel.id:
-                await warn_channel.send(embed=embed)
-                await interaction.response.send_message(f'✅ WARN снят. Лог отправлен в {warn_channel.mention}.', ephemeral=True)
+            cfg = get_config(
+                interaction.guild.id
+            )
+
+            warn_channel = (
+                interaction.guild.get_channel(
+                    cfg.get("warn_channel_id")
+                )
+                if cfg.get("warn_channel_id")
+                else None
+            )
+
+            if (
+                isinstance(
+                    warn_channel,
+                    discord.TextChannel
+                )
+                and warn_channel.id != interaction.channel.id
+            ):
+
+                await warn_channel.send(
+                    embed=embed
+                )
+
+                await interaction.response.send_message(
+                    f"✅ WARN снят. "
+                    f"Лог отправлен в {warn_channel.mention}.",
+                    ephemeral=True
+                )
+
             else:
-                await interaction.response.send_message(embed=embed)
+
+                await interaction.response.send_message(
+                    embed=embed
+                )
 
         except Exception as error:
 
@@ -782,14 +921,15 @@ class Warns(commands.Cog):
 
             print(
                 "[SAVAGE][WARNS] "
-                f"/warn-addstaff: "
-                f"{type(error).__name__}: {error}"
+                f"/warn-addstaff: {type(error).__name__}: {error}"
             )
 
-            await interaction.response.send_message(
-                "❌ Произошла ошибка.",
-                ephemeral=True
-            )
+            if not interaction.response.is_done():
+
+                await interaction.response.send_message(
+                    "❌ Произошла ошибка.",
+                    ephemeral=True
+                )
 
     # ========================================================
     #                   /WARN-REMSTAFF
@@ -852,14 +992,15 @@ class Warns(commands.Cog):
 
             print(
                 "[SAVAGE][WARNS] "
-                f"/warn-remstaff: "
-                f"{type(error).__name__}: {error}"
+                f"/warn-remstaff: {type(error).__name__}: {error}"
             )
 
-            await interaction.response.send_message(
-                "❌ Произошла ошибка.",
-                ephemeral=True
-            )
+            if not interaction.response.is_done():
+
+                await interaction.response.send_message(
+                    "❌ Произошла ошибка.",
+                    ephemeral=True
+                )
 
 
 # ============================================================
