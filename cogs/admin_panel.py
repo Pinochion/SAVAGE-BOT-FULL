@@ -139,11 +139,11 @@ class SimpleSettings(discord.ui.View):
 class GroupRoles(SimpleSettings):
     def __init__(self,cog):
         super().__init__(cog)
-        for row,(key,label) in enumerate([('group_admin_role_id','Администратор'),('group_moderator_role_id','Модератор'),('group_checked_role_id','Checked'),('group_family_role_id','Family')]): self.add_item(RoleSetting(key,f'Роли группы: {label} (можно несколько)',multi=True,row=row))
+        for row,(key,label) in enumerate([('group_admin_role_ids','Администратор'),('group_moderator_role_ids','Модератор'),('group_checked_role_ids','Checked'),('group_family_role_ids','Family')]): self.add_item(RoleSetting(key,f'Роли группы: {label}',multi=True,row=row))
         self.add_back()
     def embed(self,guild):
         c=get_config(guild.id)
-        return discord.Embed(title='👥 Группы ролей',description='В каждой группе можно выбрать несколько Discord-ролей. Участник получает группу, если у него есть хотя бы одна из назначенных ролей.',color=discord.Color.blurple()).add_field(name='Администратор',value=roles_text(guild,parse_ids(c.get('group_admin_role_id')))).add_field(name='Модератор',value=roles_text(guild,parse_ids(c.get('group_moderator_role_id')))).add_field(name='Checked',value=roles_text(guild,parse_ids(c.get('group_checked_role_id')))).add_field(name='Family',value=roles_text(guild,parse_ids(c.get('group_family_role_id'))))
+        return discord.Embed(title='👥 Группы ролей',description='Назначьте Discord-роль каждой группе. Эти группы используются для выдачи доступа к функциям.',color=discord.Color.blurple()).add_field(name='Администратор',value=mention_role(guild,c.get('group_admin_role_id'))).add_field(name='Модератор',value=mention_role(guild,c.get('group_moderator_role_id'))).add_field(name='Checked',value=mention_role(guild,c.get('group_checked_role_id'))).add_field(name='Family',value=mention_role(guild,c.get('group_family_role_id')))
 
 
 class HierarchyRoles(SimpleSettings):
@@ -236,8 +236,8 @@ class BroadcastModal(discord.ui.Modal,title='Рассылка участника
         cfg=get_config(i.guild.id); role_ids=set()
         for key,_ in HIERARCHY:
             val=cfg.get(key); role_ids.update(parse_ids(val) if key.endswith('_ids') else ([int(val)] if val else []))
-        for key in ('group_family_role_id',):
-            role_ids.update(parse_ids(cfg.get(key, '')))
+        for key in ('group_family_role_ids',):
+            if cfg.get(key): role_ids.update(parse_ids(cfg[key]))
         members=[m for m in i.guild.members if not m.bot and any(r.id in role_ids for r in m.roles)]
         await i.response.send_message(f'📨 Начинаю рассылку {len(members)} участникам. Результат пришлю после завершения.',ephemeral=True)
         sent=failed=0
@@ -320,7 +320,7 @@ class AdminPanel(commands.Cog):
     def voice_embed(self,g): return discord.Embed(title='🛠️ АДМИН ПАНЕЛЬ',description='📣 **Всех ко мне** — переместить участников в ваш голосовой канал.\n😴 **Спящих в AFK** — переместить участников с выключенными наушниками в AFK.\n🔔 **Размутить** — выбрать участника, уведомить его и перемещать до снятия deaf.\n🔔 **Размутить всех** — то же самое для всех участников с выключенными наушниками.\n✉️ **Рассылка в ЛС** — отправить текст участникам семейства.',color=discord.Color.dark_teal())
     def general_embed(self,g):
         c=get_config(g.id)
-        return discord.Embed(title='⚙️ Общие настройки',description=f"**Группы ролей**\nАдминистратор: {roles_text(g,parse_ids(c.get('group_admin_role_id')))}\nМодератор: {roles_text(g,parse_ids(c.get('group_moderator_role_id')))}\nChecked: {roles_text(g,parse_ids(c.get('group_checked_role_id')))}\nFamily: {roles_text(g,parse_ids(c.get('group_family_role_id')))}\n\n**Иерархия**\n"+' → '.join(f"{name}: {mention_role(g,c.get(key)) if not key.endswith('_ids') else roles_text(g,parse_ids(c.get(key)))}" for key,name in HIERARCHY)+f"\n\n**Tiers**\nTier 1: {mention_role(g,c.get('tier_1_role_id'))}\nTier 2: {mention_role(g,c.get('tier_2_role_id'))}\nTier 3: {mention_role(g,c.get('tier_3_role_id'))}",color=discord.Color.blue())
+        return discord.Embed(title='⚙️ Общие настройки',description=f"**Группы ролей**\nАдминистратор: {roles_text(g,parse_ids(c.get('group_admin_role_ids')))}\nМодератор: {roles_text(g,parse_ids(c.get('group_moderator_role_ids')))}\nChecked: {roles_text(g,parse_ids(c.get('group_checked_role_ids')))}\nFamily: {roles_text(g,parse_ids(c.get('group_family_role_ids')))}\n\n**Иерархия**\n"+' → '.join(f"{name}: {mention_role(g,c.get(key)) if not key.endswith('_ids') else roles_text(g,parse_ids(c.get(key)))}" for key,name in HIERARCHY)+f"\n\n**Tiers**\nTier 1: {mention_role(g,c.get('tier_1_role_id'))}\nTier 2: {mention_role(g,c.get('tier_2_role_id'))}\nTier 3: {mention_role(g,c.get('tier_3_role_id'))}",color=discord.Color.blue())
     def tickets_embed(self,g):
         s=dict(get_ticket_settings(g.id)); return discord.Embed(title='🎫 Настройка тикетов',description=f"Канал панели: {mention_channel(g,s.get('panel_channel_id'))}\nОткрытая категория: {mention_channel(g,s.get('open_category_id'))}\nЗакрытая категория: {mention_channel(g,s.get('closed_category_id'))}",color=discord.Color.blue())
     def warns_embed(self,g):
