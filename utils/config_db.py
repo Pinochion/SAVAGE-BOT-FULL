@@ -116,6 +116,16 @@ def init_config_database():
     for name, definition in additions.items():
         if name not in existing:
             conn.execute(f"ALTER TABLE guild_config ADD COLUMN {name} {definition}")
+    # Migrate role IDs stored by the previous singular group-column names.
+    for group in ("admin", "moderator", "checked", "family"):
+        old_key = f"group_{group}_role_id"
+        new_key = f"group_{group}_role_ids"
+        if old_key in existing:
+            conn.execute(
+                f"UPDATE guild_config SET {new_key}=CAST({old_key} AS TEXT) "
+                f"WHERE ({new_key} IS NULL OR {new_key}='') "
+                f"AND {old_key} IS NOT NULL AND CAST({old_key} AS TEXT)!=''"
+            )
     # Keep old tier roles as a migration source when new tier fields are unset.
     conn.execute("UPDATE guild_config SET tier_1_role_id=COALESCE(tier_1_role_id, main_role_id), tier_2_role_id=COALESCE(tier_2_role_id, default_role_id), tier_3_role_id=COALESCE(tier_3_role_id, academy_role_id)")
     conn.commit()
