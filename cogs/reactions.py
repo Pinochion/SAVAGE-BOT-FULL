@@ -12,6 +12,7 @@ from utils.config_db import (
 )
 from utils.permissions import (
     can_start_reaction,
+    has_group_access,
     is_admin,
     is_recruiter,
 )
@@ -344,16 +345,11 @@ def can_start_vzp(member):
     if not isinstance(member, discord.Member):
         return False
 
-    if is_admin(member):
-        return True
-
-    cfg = get_config(member.guild.id)
-    allowed = set(csv_ids(cfg.get("reaction_vzp_start_role_ids")))
-    return bool(allowed.intersection(role.id for role in member.roles))
+    return has_group_access(member, "reactions")
 
 
 def can_manage_event(member, event):
-    return is_admin(member) or is_recruiter(member)
+    return has_group_access(member, 'reactions')
 
 
 # =========================================================
@@ -1206,7 +1202,7 @@ class Reactions(commands.Cog):
     # =====================================================
 
     async def tag_roles(self, interaction, event_id):
-        if not is_recruiter(interaction.user):
+        if not has_group_access(interaction.user, 'reactions'):
             return await interaction.response.send_message(
                 "❌ Только рекрутеры могут тегать роли.",
                 ephemeral=True,
@@ -1440,7 +1436,7 @@ class Reactions(commands.Cog):
                 ephemeral=True,
             )
 
-        if not is_admin(interaction.user):
+        if not has_group_access(interaction.user, 'reactions'):
             return await interaction.response.send_message(
                 "❌ Только администратор может отменить результат.",
                 ephemeral=True,
