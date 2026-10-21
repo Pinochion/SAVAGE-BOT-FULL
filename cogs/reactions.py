@@ -288,17 +288,11 @@ def get_role_id(cfg, *keys):
 
 
 def get_reaction_roles(guild):
+    """Возвращает все роли группы Family для упоминания в обычных реакциях."""
     cfg = get_config(guild.id)
     roles = []
 
-    for role_id in (
-        get_role_id(cfg, "main_role_id", "main_role_ids"),
-        get_role_id(cfg, "default_role_id", "default_role_ids"),
-        get_role_id(cfg, "academy_role_id", "academy_role_ids"),
-    ):
-        if not role_id:
-            continue
-
+    for role_id in csv_ids(cfg.get("group_family_role_ids")):
         role = guild.get_role(role_id)
         if role and role not in roles:
             roles.append(role)
@@ -559,7 +553,7 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
                 role_mentions = get_reaction_mentions(interaction.guild)
                 if not role_mentions:
                     return await interaction.response.send_message(
-                        "❌ Роли MAIN / DEFAULT / ACADEMY не настроены.",
+                        "❌ В админ-панели не настроены роли группы Family.",
                         ephemeral=True,
                     )
 
