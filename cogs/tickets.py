@@ -7,6 +7,9 @@ import os
 import re
 from datetime import datetime
 
+from utils.config_db import get_config
+from utils.permissions import has_group_access
+
 
 # ============================================================
 #                 S A V A G E • TICKETS
@@ -503,22 +506,24 @@ def is_staff(
     member: discord.Member,
     staff_role_ids
 ):
+    cfg = get_config(member.guild.id)
+    group_keys = (
+        "group_admin_role_ids",
+        "group_moderator_role_ids",
+        "group_checked_role_ids",
+        "group_family_role_ids",
+    )
+    # When the new access groups are configured, they are the source of truth.
+    if any(cfg.get(key) for key in group_keys):
+        return has_group_access(member, "tickets")
+
+    # Backwards compatibility for servers that have not configured groups yet.
     if member.guild_permissions.administrator:
         return True
-
     if not staff_role_ids:
         return False
-
-    member_role_ids = {
-        role.id
-        for role in member.roles
-    }
-
-    return bool(
-        member_role_ids.intersection(
-            set(staff_role_ids)
-        )
-    )
+    member_role_ids = {role.id for role in member.roles}
+    return bool(member_role_ids.intersection(set(staff_role_ids)))
 
 
 # ============================================================
