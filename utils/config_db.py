@@ -4,6 +4,9 @@ from typing import Optional
 
 DB_PATH = Path("database/savage.db")
 
+GROUPS = ("admin", "moderator", "checked", "family")
+FEATURES = ("settings", "tickets", "warns", "contracts", "contracts_start", "contracts_join", "reactions", "voice_panel", "broadcast")
+
 
 def get_connection():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
