@@ -19,6 +19,7 @@ def family_member(member, config):
         role_ids.update(parse_ids(config.get(key, "")))
     # Совместимость с текущей основной ролью семьи и настройкой Family.
     role_ids.update(parse_ids(config.get("family_role_ids", "")))
+    role_ids.update(parse_ids(config.get("group_family_role_ids", "")))
     if config.get("family_role_id"):
         role_ids.update(parse_ids(str(config["family_role_id"])))
     return bool(role_ids.intersection(role.id for role in member.roles))
