@@ -38,6 +38,16 @@ CONFIG_COLUMNS = {
     "ticket_panel_channel_id": "INTEGER",
     "afk_voice_channel_id": "INTEGER",
     "vzp_role_id": "INTEGER",
+    "reaction_vzp_channel_id": "INTEGER",
+    "reaction_vzp_start_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_owner_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_deputy_owner_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_heads_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_high_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_recruiter_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_main_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_savage_role_ids": "TEXT NOT NULL DEFAULT ''",
+    "job_new_savage_role_ids": "TEXT NOT NULL DEFAULT ''",
     "permissions_json": "TEXT NOT NULL DEFAULT '{}'",
 }
 
