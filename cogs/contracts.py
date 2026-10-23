@@ -463,26 +463,17 @@ class Contracts(commands.Cog):
             end_time,
         )
 
-        # Основная роль семьи
-        family_role = None
-
-        family_role_id = config.get(
-            "family_role_id"
-        )
-
-        if family_role_id:
-
-            try:
-                family_role = (
-                    interaction.guild.get_role(
-                        int(family_role_id)
-                    )
-                )
-            except (
-                TypeError,
-                ValueError,
-            ):
-                family_role = None
+        # Тегаем все роли Family, выбранные в общей панели.
+        family_role_ids = csv_ids(config.get("group_family_role_ids"))
+        family_role_ids += csv_ids(config.get("family_role_ids"))
+        if config.get("family_role_id"):
+            family_role_ids += csv_ids(str(config["family_role_id"]))
+        family_roles = []
+        for role_id in dict.fromkeys(family_role_ids):
+            role = interaction.guild.get_role(role_id)
+            if role and role not in family_roles:
+                family_roles.append(role)
+        family_mention = " ".join(role.mention for role in family_roles)
 
         # Инициатор уже автоматически участник
         embed = discord.Embed(
@@ -503,11 +494,7 @@ class Contracts(commands.Cog):
             color=discord.Color.green(),
         )
 
-        content = (
-            family_role.mention
-            if family_role
-            else None
-        )
+        content = family_mention or None
 
         allowed_mentions = discord.AllowedMentions(
             roles=True,
