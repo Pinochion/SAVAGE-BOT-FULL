@@ -852,6 +852,10 @@ class AdminPanel(commands.Cog):
             ReactionSettingsView(self)
         )
 
+        self.bot.add_view(
+            TierSettingsView(self)
+        )
+
         print(
             "✅ Persistent admin panel views зарегистрированы"
         )
