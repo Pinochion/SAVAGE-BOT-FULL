@@ -906,34 +906,26 @@ class AdminPanel(commands.Cog):
         )
 
     def general_embed(self, guild):
-
         config = get_config(guild.id)
-
-        admin_roles = safe_parse_ids(
-            config.get("admin_role_ids")
-        )
-
-        recruiter_roles = safe_parse_ids(
-            config.get("recruiter_role_ids")
-        )
-
+        def roles_for(key):
+            return role_mentions(guild, safe_parse_ids(config.get(key, "")))
         return discord.Embed(
             title="⚙️ Общие настройки",
             description=(
-                f"**Администраторы:**\n"
-                f"{role_mentions(guild, admin_roles)}\n\n"
-
-                f"**Рекруты:**\n"
-                f"{role_mentions(guild, recruiter_roles)}\n\n"
-
-                f"**MAIN:** "
-                f"{role_mention(guild, config.get('main_role_id'))}\n\n"
-
-                f"**DEFAULT:** "
-                f"{role_mention(guild, config.get('default_role_id'))}\n\n"
-
-                f"**ACADEMY:** "
-                f"{role_mention(guild, config.get('academy_role_id'))}"
+                f"**Группы доступа**\n"
+                f"Администратор: {roles_for('group_admin_role_ids')}\n"
+                f"Модератор: {roles_for('group_moderator_role_ids')}\n"
+                f"Checked: {roles_for('group_checked_role_ids')}\n"
+                f"Family: {roles_for('group_family_role_ids')}\n\n"
+                f"**Тиры (сортировка ивентов)**\n"
+                f"Tier 1: {roles_for('tier1_role_ids')}\n"
+                f"Tier 2: {roles_for('tier2_role_ids')}\n"
+                f"Tier 3: {roles_for('tier3_role_ids')}\n\n"
+                f"**Старые основные роли**\n"
+                f"MAIN: {role_mention(guild, config.get('main_role_id'))}\n"
+                f"DEFAULT: {role_mention(guild, config.get('default_role_id'))}\n"
+                f"ACADEMY: {role_mention(guild, config.get('academy_role_id'))}\n\n"
+                "Все участники могут запускать ивенты и записываться. В списке выше Tier 1, затем Tier 2, затем Tier 3; участники без тира — внизу."
             ),
             color=discord.Color.blue(),
         )
