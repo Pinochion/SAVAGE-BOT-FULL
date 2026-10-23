@@ -1,5 +1,8 @@
 """Smoke test for individual Discord UI view constructors."""
+import os
 import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from cogs.admin_panel import (
     AdminPanelView, GeneralView, RoleGroupsView, TierRolesView,
     HierarchyRolesView, HierarchyRolesView2, TicketSettingsView,
