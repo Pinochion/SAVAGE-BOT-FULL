@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [admin, tickets, contracts, reactions, voice]
+        view: [AdminPanelView, GeneralView, RoleGroupsView, TierRolesView, HierarchyRolesView, HierarchyRolesView2, TicketSettingsView, TicketExtraSettingsView, WarnSettingsView, ContractSettingsView, ContractFamilyView, ReactionSettingsView, VoiceToolsView, ContractPanel, ActiveContractView, EventView]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,4 +34,4 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install -r requirements.txt
-      - run: python tests/smoke_views.py ${{ matrix.group }}
+      - run: python tests/smoke_views.py ${{ matrix.view }}
