@@ -1,11 +1,11 @@
-"""Ивенты /event и /vzp. Запись открыта всем участникам; порядок списка определяется Tier 1 > Tier 2 > Tier 3."""
+"""Ивенты /event и /vzp. Все могут записываться; список упорядочен по времени записи."""
 from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.config_db import get_connection, get_config, parse_ids, user_priority
+from utils.config_db import get_connection, get_config, parse_ids
 
 def utcnow():
     return datetime.now(timezone.utc)
@@ -37,14 +37,14 @@ def save_ids(event_id, ids):
     with get_connection() as conn:
         conn.execute("UPDATE reaction_events SET participants=? WHERE id=?", (",".join(map(str, dict.fromkeys(int(x) for x in ids))), int(event_id)))
 
-def tier_order(guild, config, user_ids):
+def signup_order(guild, user_ids):
+    """Сохраняет порядок записи: кто записался раньше, тот выше в списке."""
     members = []
-    for position, user_id in enumerate(user_ids):
+    for user_id in user_ids:
         member = guild.get_member(int(user_id))
         if member:
-            members.append((user_priority(config, member), position, member))
-    members.sort(key=lambda item: (-item[0], item[1]))
-    return [item[2] for item in members]
+            members.append(member)
+    return members
 
 def role_mentions(guild, config, event_type):
     if event_type == "vzp":
@@ -60,7 +60,7 @@ def role_mentions(guild, config, event_type):
 
 def event_embed(guild, event, config):
     ids = parse_ids(event.get("participants", ""))
-    members = tier_order(guild, config, ids)
+    members = signup_order(guild, ids)
     title = event.get("title") or ("ВЗП" if event.get("event_type") == "vzp" else "Набор")
     description = f"**Создатель:** <@{event['creator_id']}>\n"
     if event.get("event_time"):
