@@ -288,11 +288,19 @@ def get_role_id(cfg, *keys):
 
 
 def get_reaction_roles(guild):
-    """Возвращает все роли группы Family для упоминания в обычных реакциях."""
+    """Возвращает роли Family для упоминания в обычных реакциях."""
     cfg = get_config(guild.id)
     roles = []
 
-    for role_id in csv_ids(cfg.get("group_family_role_ids")):
+    # Основной источник — все роли группы Family в общих настройках.
+    role_ids = csv_ids(cfg.get("group_family_role_ids"))
+
+    # Поддержка старой конфигурации, где могла быть сохранена одна роль.
+    legacy_role_id = get_role_id(cfg, "group_family_role_id", "family_role_id")
+    if legacy_role_id:
+        role_ids.append(legacy_role_id)
+
+    for role_id in dict.fromkeys(role_ids):
         role = guild.get_role(role_id)
         if role and role not in roles:
             roles.append(role)
@@ -339,7 +347,8 @@ def can_start_vzp(member):
     if not isinstance(member, discord.Member):
         return False
 
-    return has_group_access(member, "reactions")
+    # Для обычного набора и VZP используется одна роль доступа из настроек реакций.
+    return can_start_reaction(member)
 
 
 def can_manage_event(member, event):
@@ -366,7 +375,8 @@ def build_embed(guild, event):
 
     collected = f"{len(participants)}/∞" if slots <= 0 else f"{len(participants)}/{slots}"
 
-    description = f"**Время забива:** {event['event_time']}\n"
+    label = "Время" if str(event.get("reaction_type", "default")).lower() != "vzp" else "Время забива"
+    description = f"**{label}:** {event['event_time']}\n"
     if str(event.get("reaction_type", "default")).lower() == "vzp":
         description += f"**Начало:** {start_time(event['event_time'], 'vzp')}\n"
     description += f"**Собрано:** {collected}\n\n" + "\n".join(lines)
@@ -400,7 +410,8 @@ def build_list_embed(guild, event):
     if not main_lines:
         main_lines.append("Никого нет.")
 
-    description = f"**Время забива:** {event['event_time']}\n"
+    label = "Время" if str(event.get("reaction_type", "default")).lower() != "vzp" else "Время забива"
+    description = f"**{label}:** {event['event_time']}\n"
     if str(event.get("reaction_type", "default")).lower() == "vzp":
         description += f"**Начало:** {start_time(event['event_time'], 'vzp')}\n"
     description += "\n**Основной состав:**\n" + "\n".join(main_lines)
@@ -444,7 +455,7 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
     )
 
     time = discord.ui.TextInput(
-        label="Время забива",
+        label="Время",
         placeholder="21:00",
         max_length=5,
         min_length=4,
@@ -1222,7 +1233,7 @@ class Reactions(commands.Cog):
             role_mentions = get_reaction_mentions(interaction.guild)
             if not role_mentions:
                 return await interaction.response.send_message(
-                    "❌ Роли MAIN / DEFAULT / ACADEMY не настроены.",
+                    "❌ В настройках общих ролей не настроены роли Family.",
                     ephemeral=True,
                 )
 
