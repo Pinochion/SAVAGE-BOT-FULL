@@ -1,51 +1,103 @@
-import os, traceback
+"""SAVAGE BOT entry point — Python 3.11 / discord.py 2.x."""
+import logging
+import os
+import traceback
+
 import discord
-from discord.ext import commands
 from discord import app_commands
+from discord.ext import commands
 from dotenv import load_dotenv
-from utils.database import init_database
+
 from utils.config_db import init_config_database
+from utils.database import init_database
 
 load_dotenv()
-TOKEN=os.getenv('DISCORD_TOKEN')
-if not TOKEN: raise RuntimeError('DISCORD_TOKEN не найден в .env')
-GUILD_ID=int(os.getenv('GUILD_ID','0'))
-GUILD=discord.Object(id=GUILD_ID) if GUILD_ID else None
-intents=discord.Intents.default(); intents.guilds=True; intents.members=True; intents.message_content=True
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+log = logging.getLogger("savage")
+
+TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
+if not TOKEN:
+    raise RuntimeError("DISCORD_TOKEN не найден. Добавь его в переменные окружения Bothost или в .env.")
+
+try:
+    GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
+except ValueError as exc:
+    raise RuntimeError("GUILD_ID должен быть числом Discord-сервера.") from exc
+TEST_GUILD = discord.Object(id=GUILD_ID) if GUILD_ID else None
+
+intents = discord.Intents.default()
+intents.guilds = True
+intents.members = True
+intents.message_content = True
+intents.voice_states = True
+
+EXTENSIONS = (
+    "cogs.general",
+    "cogs.tickets",
+    "cogs.warns",
+    "cogs.admin_panel",
+    "cogs.contracts",
+    "cogs.reactions",
+)
 
 class SavageBot(commands.Bot):
-    def __init__(self): super().__init__(command_prefix='!',intents=intents,help_command=None)
-    async def setup_hook(self):
-        init_database(); init_config_database()
-        extensions=['cogs.general','cogs.tickets','cogs.warns','cogs.admin_panel','cogs.contracts','cogs.reactions']
-        for ext in extensions:
-            try:
-                await self.load_extension(ext); print(f'✅ {ext} загружен')
-            except Exception as e:
-                print(f'❌ Ошибка {ext}: {type(e).__name__}: {e}'); traceback.print_exc()
-        if GUILD:
-            try:
-                self.tree.copy_global_to(guild=GUILD)
-                synced=await self.tree.sync(guild=GUILD)
-                print(f'✅ Синхронизировано команд: {len(synced)}')
-            except Exception as e: print(f'❌ Ошибка синхронизации: {e}')
-    async def on_ready(self):
-        print(f'🤖 S A V A G E online: {self.user} ({self.user.id})')
-        for name in ('contracts','reactions'):
-            cog=self.get_cog(name.capitalize())
-            if cog and hasattr(cog,'restore_views'):
-                await cog.restore_views()
+    def __init__(self):
+        super().__init__(command_prefix="!", intents=intents, help_command=None)
+        self._views_restored = False
 
-bot=SavageBot()
+    async def setup_hook(self):
+        init_database()
+        init_config_database()
+        for extension in EXTENSIONS:
+            try:
+                await self.load_extension(extension)
+                log.info("Loaded extension %s", extension)
+            except Exception:
+                log.exception("Failed loading extension %s", extension)
+
+        try:
+            if TEST_GUILD:
+                self.tree.copy_global_to(guild=TEST_GUILD)
+                synced = await self.tree.sync(guild=TEST_GUILD)
+                log.info("Synced %d guild slash commands to %s", len(synced), GUILD_ID)
+            else:
+                synced = await self.tree.sync()
+                log.info("Synced %d global slash commands", len(synced))
+        except Exception:
+            log.exception("Slash-command sync failed")
+
+    async def on_ready(self):
+        log.info("Logged in as %s (%s)", self.user, self.user.id if self.user else "?")
+        if self._views_restored:
+            return
+        self._views_restored = True
+        for cog_name in ("Contracts", "Reactions", "Tickets"):
+            cog = self.get_cog(cog_name)
+            restore = getattr(cog, "restore_views", None) if cog else None
+            if restore:
+                try:
+                    await restore()
+                except Exception:
+                    log.exception("Could not restore persistent views for %s", cog_name)
+
+bot = SavageBot()
 
 @bot.tree.error
-async def on_app_command_error(interaction,error):
-    print(f'[SLASH ERROR] {type(error).__name__}: {error}')
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    original = getattr(error, "original", error)
+    log.error("Application command error: %s", original, exc_info=original)
+    if isinstance(error, app_commands.CommandOnCooldown):
+        message = f"⏳ Подожди {error.retry_after:.1f} сек."
+    elif isinstance(error, app_commands.MissingPermissions):
+        message = "❌ Недостаточно прав для этой команды."
+    else:
+        message = "❌ Ошибка выполнения. Подробности записаны в лог."
     try:
-        msg='❌ Произошла ошибка при выполнении команды.'
-        if isinstance(error,app_commands.CommandOnCooldown): msg=f'⏳ Подождите {error.retry_after:.1f} сек.'
-        if interaction.response.is_done(): await interaction.followup.send(msg,ephemeral=True)
-        else: await interaction.response.send_message(msg,ephemeral=True)
-    except Exception: pass
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+    except discord.HTTPException:
+        pass
 
 bot.run(TOKEN)
