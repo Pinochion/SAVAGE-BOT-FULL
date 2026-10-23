@@ -97,9 +97,9 @@ bot = SavageBot()
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     original = getattr(error, "original", error)
     print(f"[SLASH ERROR] {type(original).__name__}: {original}")
-    message = "❌ Ошибка при выполнении команды. Подробности сохранены в логах бота."
+    message = "⛓️ Ошибка при выполнении команды. Подробности сохранены в логах бота."
     if isinstance(error, app_commands.CommandOnCooldown):
-        message = f"⏳ Подождите {error.retry_after:.1f} сек."
+        message = f"⌛ Подождите {error.retry_after:.1f} сек."
     try:
         if interaction.response.is_done():
             await interaction.followup.send(message, ephemeral=True)
