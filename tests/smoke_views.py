@@ -1,4 +1,4 @@
-"""Smoke test for Discord UI view constructors."""
+"""Smoke test for individual Discord UI view constructors."""
 import sys
 from cogs.admin_panel import (
     AdminPanelView, GeneralView, RoleGroupsView, TierRolesView,
@@ -15,16 +15,25 @@ class Dummy:
 
 cog = Dummy()
 cog.bot = Dummy()
-groups = {
-    "admin": [AdminPanelView, GeneralView, RoleGroupsView, TierRolesView, HierarchyRolesView, HierarchyRolesView2],
-    "tickets": [TicketSettingsView, TicketExtraSettingsView, WarnSettingsView],
-    "contracts": [ContractSettingsView, ContractFamilyView, ContractPanel, ActiveContractView],
-    "reactions": [ReactionSettingsView, EventView],
-    "voice": [VoiceToolsView],
+views = {
+    "AdminPanelView": lambda: AdminPanelView(cog),
+    "GeneralView": lambda: GeneralView(cog),
+    "RoleGroupsView": lambda: RoleGroupsView(cog),
+    "TierRolesView": lambda: TierRolesView(cog),
+    "HierarchyRolesView": lambda: HierarchyRolesView(cog),
+    "HierarchyRolesView2": lambda: HierarchyRolesView2(cog),
+    "TicketSettingsView": lambda: TicketSettingsView(cog),
+    "TicketExtraSettingsView": lambda: TicketExtraSettingsView(cog),
+    "WarnSettingsView": lambda: WarnSettingsView(cog),
+    "ContractSettingsView": lambda: ContractSettingsView(cog),
+    "ContractFamilyView": lambda: ContractFamilyView(cog),
+    "ReactionSettingsView": lambda: ReactionSettingsView(cog),
+    "VoiceToolsView": lambda: VoiceToolsView(cog),
+    "ContractPanel": lambda: ContractPanel(cog),
+    "ActiveContractView": lambda: ActiveContractView(cog, 1),
+    "EventView": lambda: EventView(cog, 1),
 }
-selected = sys.argv[1] if len(sys.argv) > 1 else "all"
-classes = sum(groups.values(), []) if selected == "all" else groups[selected]
-views = [cls(cog, 1) if cls in (ActiveContractView, EventView) else cls(cog) for cls in classes]
-for view in views:
-    assert view.children, type(view).__name__
-print(f"{selected}: constructed {len(views)} views")
+name = sys.argv[1]
+view = views[name]()
+assert view.children, name
+print(f"{name}: OK ({len(view.children)} components)")
