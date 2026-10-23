@@ -490,11 +490,10 @@ class GeneralView(BackView):
         self.add_item(OpenRoleConfigButton(cog, "👥 Группы доступа", "groups", row=0))
         self.add_item(OpenRoleConfigButton(cog, "🏆 Тиры", "tiers", row=0))
         self.add_item(OpenRoleConfigButton(cog, "📋 Иерархия", "hierarchy", row=0))
-        self.add_item(RolesSelect("admin_role_ids", "Администраторы", 0, 10, row=1))
-        self.add_item(RolesSelect("recruiter_role_ids", "Рекрутеры", 0, 10, row=2))
-        self.add_item(OneRoleSelect("main_role_id", "Роль MAIN", row=3))
-        self.add_item(OneRoleSelect("default_role_id", "Роль DEFAULT", row=3))
+        self.add_item(OneRoleSelect("main_role_id", "Роль MAIN", row=1))
+        self.add_item(OneRoleSelect("default_role_id", "Роль DEFAULT", row=2))
         self.add_item(OneRoleSelect("academy_role_id", "Роль ACADEMY", row=3))
+        self.add_back_button()
 
 
 # =========================================================
