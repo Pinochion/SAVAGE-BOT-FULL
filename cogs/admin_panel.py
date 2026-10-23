@@ -554,6 +554,45 @@ class TicketChannelSelect(ChannelSelect):
         )
 
 
+class TicketStaffSelect(RolesSelect):
+    def __init__(self):
+        super().__init__("ticket_staff_roles", "Роли поддержки тикетов", 0, 10, row=3)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        ticket_update_setting(interaction.guild.id, "staff_role_id", dump_ids([role.id for role in self.values]))
+        await interaction.response.send_message("✅ Роли поддержки тикетов сохранены.", ephemeral=True)
+
+class TicketMemberRoleSelect(discord.ui.RoleSelect):
+    def __init__(self):
+        super().__init__(placeholder="Роль, выдаваемая кандидату", min_values=1, max_values=1, row=0, custom_id="admin:ticket:member-role")
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        ticket_update_setting(interaction.guild.id, "member_role_id", self.values[0].id)
+        await interaction.response.send_message(f"✅ Роль кандидата сохранена: {self.values[0].mention}.", ephemeral=True)
+
+class TicketMoreButton(discord.ui.Button):
+    def __init__(self, cog):
+        self.cog = cog
+        super().__init__(label="Доп. настройки ▶", style=discord.ButtonStyle.primary, custom_id="admin:tickets:more", row=4)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        await interaction.response.edit_message(
+            embed=discord.Embed(title="🎫 Дополнительные настройки тикетов", description="Выберите роль, которую бот выдаёт кандидату после обработки тикета.", color=discord.Color.blurple()),
+            view=TicketExtraSettingsView(self.cog),
+        )
+
+class TicketExtraSettingsView(BackView):
+    def __init__(self, cog):
+        super().__init__(cog)
+        self.add_item(TicketMemberRoleSelect())
+        self.add_back_button()
+
 class TicketSettingsView(BackView):
 
     def __init__(self, cog):
@@ -584,8 +623,9 @@ class TicketSettingsView(BackView):
                 row=2,
             )
         )
-
+        self.add_item(TicketStaffSelect())
         self.add_back_button()
+        self.add_item(TicketMoreButton(cog))
 
 
 # =========================================================
@@ -855,6 +895,7 @@ class AdminPanel(commands.Cog):
         self.bot.add_view(
             TicketSettingsView(self)
         )
+        self.bot.add_view(TicketExtraSettingsView(self))
 
         self.bot.add_view(
             WarnSettingsView(self)
