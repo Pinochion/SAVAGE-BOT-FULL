@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timedelta
 
 from utils.config_db import get_config
-from utils.permissions import is_recruiter, has_group_access
+from utils.permissions import has_role_or_higher
 
 
 # ============================================================
@@ -302,26 +302,9 @@ def remove_expired_warns():
 #                         STAFF CHECK
 # ============================================================
 
-def is_warn_staff(
-    member: discord.Member
-):
+def is_warn_staff(member: discord.Member):
     cfg = get_config(member.guild.id)
-    group_keys = (
-        "group_admin_role_ids",
-        "group_moderator_role_ids",
-        "group_checked_role_ids",
-        "group_family_role_ids",
-    )
-    # Once groups are configured, WARN access follows the permission matrix.
-    if any(cfg.get(key) for key in group_keys):
-        return has_group_access(member, "warns")
-
-    # Backwards compatibility for servers not yet configured for groups.
-    if member.guild_permissions.administrator or is_recruiter(member):
-        return True
-    role_ids = get_warn_staff_roles(member.guild.id)
-    member_role_ids = {role.id for role in member.roles}
-    return bool(member_role_ids.intersection(set(role_ids)))
+    return has_role_or_higher(member, cfg.get("warn_access_role_id"))
 
 
 # ============================================================
