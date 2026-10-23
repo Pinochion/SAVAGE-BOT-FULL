@@ -216,6 +216,8 @@ class TicketSettings(SimpleSettings):
         self.add_item(TicketStaffRolesSetting('Роли сотрудников / рекрутов',row=3))
         self.add_item(TicketPageButton(cog,page=1))
         self.add_back('manage')
+    def embed(self,guild):
+        return self.cog.tickets_embed(guild)
 
 class TicketChannelSetting(ChannelSetting):
     async def callback(self,i):
