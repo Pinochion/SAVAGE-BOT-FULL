@@ -443,49 +443,37 @@ class GeneralView(BackView):
     def __init__(self, cog):
         super().__init__(cog)
 
-        self.add_item(
-            RolesSelect(
-                "admin_role_ids",
-                "Администраторы",
-                0,
-                10,
-                row=0,
-            )
-        )
+        self.add_item(RolesSelect("group_admin_role_ids", "Группа: Администратор", 0, 10, row=0))
+        self.add_item(RolesSelect("group_moderator_role_ids", "Группа: Модератор", 0, 10, row=1))
+        self.add_item(RolesSelect("group_checked_role_ids", "Группа: Checked", 0, 10, row=2))
+        self.add_item(RolesSelect("group_family_role_ids", "Группа: Family (упоминания)", 0, 10, row=3))
+        self.add_item(TierSettingsButton(cog))
 
-        self.add_item(
-            RolesSelect(
-                "recruiter_role_ids",
-                "Рекруты",
-                0,
-                10,
-                row=1,
-            )
-        )
 
-        self.add_item(
-            OneRoleSelect(
-                "main_role_id",
-                "Роль MAIN",
-                row=2,
-            )
-        )
+class TierSettingsButton(discord.ui.Button):
+    def __init__(self, cog):
+        self.cog = cog
+        super().__init__(label="🏅 Настроить приоритеты Tier", style=discord.ButtonStyle.primary, custom_id="admin:tiers", row=4)
 
-        self.add_item(
-            OneRoleSelect(
-                "default_role_id",
-                "Роль DEFAULT",
-                row=3,
-            )
-        )
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild:
+            return await interaction.response.send_message("❌ Только на сервере.", ephemeral=True)
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        await interaction.response.edit_message(embed=discord.Embed(
+            title="🏅 Приоритеты Tier",
+            description="Укажи роли каждого уровня. Tier 1 выше Tier 2, Tier 2 выше Tier 3. Игроки без Tier идут после них.",
+            color=discord.Color.blurple(),
+        ), view=TierSettingsView(self.cog))
 
-        self.add_item(
-            OneRoleSelect(
-                "academy_role_id",
-                "Роль ACADEMY",
-                row=4,
-            )
-        )
+
+class TierSettingsView(BackView):
+    def __init__(self, cog):
+        super().__init__(cog)
+        self.add_item(RolesSelect("tier1_role_ids", "Роли Tier 1 — высший приоритет", 0, 10, row=0))
+        self.add_item(RolesSelect("tier2_role_ids", "Роли Tier 2", 0, 10, row=1))
+        self.add_item(RolesSelect("tier3_role_ids", "Роли Tier 3", 0, 10, row=2))
+        self.add_back_button()
 
 
 # =========================================================
@@ -902,31 +890,16 @@ class AdminPanel(commands.Cog):
 
         config = get_config(guild.id)
 
-        admin_roles = safe_parse_ids(
-            config.get("admin_role_ids")
-        )
-
-        recruiter_roles = safe_parse_ids(
-            config.get("recruiter_role_ids")
-        )
-
         return discord.Embed(
             title="⚙️ Общие настройки",
             description=(
-                f"**Администраторы:**\n"
-                f"{role_mentions(guild, admin_roles)}\n\n"
-
-                f"**Рекруты:**\n"
-                f"{role_mentions(guild, recruiter_roles)}\n\n"
-
-                f"**MAIN:** "
-                f"{role_mention(guild, config.get('main_role_id'))}\n\n"
-
-                f"**DEFAULT:** "
-                f"{role_mention(guild, config.get('default_role_id'))}\n\n"
-
-                f"**ACADEMY:** "
-                f"{role_mention(guild, config.get('academy_role_id'))}"
+                "**Группы ролей для настройки доступа:**\n"
+                f"**Администратор:** {role_mentions(guild, safe_parse_ids(config.get('group_admin_role_ids') or config.get('admin_role_ids')))}\n"
+                f"**Модератор:** {role_mentions(guild, safe_parse_ids(config.get('group_moderator_role_ids')))}\n"
+                f"**Checked:** {role_mentions(guild, safe_parse_ids(config.get('group_checked_role_ids')))}\n"
+                f"**Family:** {role_mentions(guild, safe_parse_ids(config.get('group_family_role_ids') or config.get('family_role_ids')))}\n\n"
+                "Приоритеты участников настраиваются в разделе **Tier**.\n"
+                "Tier 1 → Tier 2 → Tier 3 → без Tier."
             ),
             color=discord.Color.blue(),
         )
