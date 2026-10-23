@@ -48,21 +48,21 @@ def family_mentions(guild, config):
 def contract_embed(contract, closed=False):
     ids = csv_ids(contract.get("participants", ""))
     ending = parse_time(contract["ends_at"])
-    title = "📄 Набор закончен" if closed else "📄 Набор в контракт открыт"
+    title = "𖤐 Набор закончен" if closed else "𖤐 Набор в контракт открыт"
     description = (
         f"**Инициатор:** <@{contract['starter_id']}>\n"
         f"**Окончание:** <t:{int(ending.timestamp())}:R>\n"
         f"**Участников:** {len(ids)}\n\n"
         "**Список участников:**\n" + ("\n".join(f"• <@{uid}>" for uid in ids) if ids else "Пока никто не записался.")
     )
-    return discord.Embed(title=title, description=description, color=discord.Color.red() if closed else discord.Color.green())
+    return discord.Embed(title=title, description=description, color=0x0B0B0D)
 
 class ContractPanel(discord.ui.View):
     def __init__(self, cog):
         super().__init__(timeout=None)
         self.cog = cog
 
-    @discord.ui.button(label="🚀 Запустить контракт", style=discord.ButtonStyle.primary, custom_id="contract:panel:start")
+    @discord.ui.button(label="✦ Запустить контракт", style=discord.ButtonStyle.secondary, custom_id="contract:panel:start")
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.start_contract(interaction)
 
@@ -73,14 +73,14 @@ class ActiveContractView(discord.ui.View):
         self.contract_id = int(contract_id)
         for item in self.children:
             if isinstance(item, discord.ui.Button):
-                action = "join" if item.label.startswith("🟢") else "leave"
+                action = "join" if item.label.startswith("◈") else "leave"
                 item.custom_id = f"contract:{action}:{self.contract_id}"
 
-    @discord.ui.button(label="🟢 Записаться", style=discord.ButtonStyle.success, custom_id="contract:join")
+    @discord.ui.button(label="◈ Записаться", style=discord.ButtonStyle.secondary, custom_id="contract:join")
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.change_participation(interaction, self.contract_id, True)
 
-    @discord.ui.button(label="🔴 Выписаться", style=discord.ButtonStyle.secondary, custom_id="contract:leave")
+    @discord.ui.button(label="◼️ Выписаться", style=discord.ButtonStyle.secondary, custom_id="contract:leave")
     async def leave(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.change_participation(interaction, self.contract_id, False)
 
@@ -108,9 +108,9 @@ class Contracts(commands.Cog):
         if not isinstance(channel, discord.TextChannel):
             return False
         embed = discord.Embed(
-            title="📄 Контракты",
+            title="𖤐 Контракты",
             description="Чтобы начать набор, нажмите **«Запустить контракт»**. Набор длится **15 минут**. Запускать и присоединяться могут все участники сервера.",
-            color=discord.Color.blurple(),
+            color=0x0B0B0D,
         )
         await channel.send(embed=embed, view=ContractPanel(self))
         return True
