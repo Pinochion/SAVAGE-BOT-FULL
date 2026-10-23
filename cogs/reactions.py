@@ -287,21 +287,18 @@ def get_role_id(cfg, *keys):
 
 
 def get_reaction_roles(guild):
+    """Ordinary event announcements mention configured Family roles, never tier roles."""
     cfg = get_config(guild.id)
+    role_ids = csv_ids(cfg.get("group_family_role_ids"))
+    role_ids += csv_ids(cfg.get("family_role_ids"))
+    legacy_id = cfg.get("family_role_id")
+    if legacy_id:
+        role_ids += csv_ids(str(legacy_id))
     roles = []
-
-    for role_id in (
-        get_role_id(cfg, "main_role_id", "main_role_ids"),
-        get_role_id(cfg, "default_role_id", "default_role_ids"),
-        get_role_id(cfg, "academy_role_id", "academy_role_ids"),
-    ):
-        if not role_id:
-            continue
-
+    for role_id in dict.fromkeys(role_ids):
         role = guild.get_role(role_id)
         if role and role not in roles:
             roles.append(role)
-
     return roles
 
 
@@ -313,7 +310,9 @@ VZP_TAG_ROLE_ID = 1403086533929599059
 
 
 def get_vzp_tag_mention(guild):
-    role = guild.get_role(VZP_TAG_ROLE_ID)
+    cfg = get_config(guild.id)
+    role_id = int(cfg.get("vzp_role_id") or VZP_TAG_ROLE_ID)
+    role = guild.get_role(role_id)
     return role.mention if role else ""
 
 
@@ -376,7 +375,7 @@ def build_embed(guild, event):
 
     collected = f"{len(participants)}/∞" if slots <= 0 else f"{len(participants)}/{slots}"
 
-    description = f"**Время забива:** {event['event_time']}\n"
+    description = f"**Время:** {event['event_time']}\n"
     if str(event.get("reaction_type", "default")).lower() == "vzp":
         description += f"**Начало:** {start_time(event['event_time'], 'vzp')}\n"
     description += f"**Собрано:** {collected}\n\n" + "\n".join(lines)
@@ -526,7 +525,7 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
                 )
 
             if interaction.channel.id != channel.id:
-                command_name = "/reaction-vzp" if self.reaction_type == "vzp" else "/reaction"
+                command_name = "/vzp" if self.reaction_type == "vzp" else "/event"
                 return await interaction.response.send_message(
                     f"❌ Использовать {command_name} можно только в {channel.mention}.",
                     ephemeral=True,
@@ -556,14 +555,14 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
                 role_mentions = get_vzp_tag_mention(interaction.guild)
                 if not role_mentions:
                     return await interaction.response.send_message(
-                        f"❌ Роль VZP `{VZP_TAG_ROLE_ID}` не найдена на сервере.",
+                        f"❌ Роль VZP не найдена. Выбери её в настройках админ-панели.",
                         ephemeral=True,
                     )
             else:
                 role_mentions = get_reaction_mentions(interaction.guild)
                 if not role_mentions:
                     return await interaction.response.send_message(
-                        "❌ Роли MAIN / DEFAULT / ACADEMY не настроены.",
+                        "❌ В админ-панели не настроены роли группы Family.",
                         ephemeral=True,
                     )
 
@@ -1459,20 +1458,14 @@ class Reactions(commands.Cog):
     # =====================================================
 
     @app_commands.command(
-        name="reaction",
+        name="event",
         description="Запустить обычный набор на контент",
     )
-    async def reaction(self, interaction):
+    async def event(self, interaction):
         try:
             if not interaction.guild:
                 return await interaction.response.send_message(
                     "❌ Эта команда работает только на сервере.",
-                    ephemeral=True,
-                )
-
-            if not can_start_reaction(interaction.user):
-                return await interaction.response.send_message(
-                    "❌ У вас нет права запускать обычный набор.",
                     ephemeral=True,
                 )
 
@@ -1482,7 +1475,7 @@ class Reactions(commands.Cog):
 
         except Exception as error:
             print(
-                "[SAVAGE][REACTIONS] /reaction: "
+                "[SAVAGE][REACTIONS] /event: "
                 f"{type(error).__name__}: {error}"
             )
 
@@ -1501,20 +1494,14 @@ class Reactions(commands.Cog):
                 pass
 
     @app_commands.command(
-        name="reaction-vzp",
+        name="vzp",
         description="Запустить набор VZP",
     )
-    async def reaction_vzp(self, interaction):
+    async def vzp(self, interaction):
         try:
             if not interaction.guild:
                 return await interaction.response.send_message(
                     "❌ Эта команда работает только на сервере.",
-                    ephemeral=True,
-                )
-
-            if not can_start_vzp(interaction.user):
-                return await interaction.response.send_message(
-                    "❌ У вас нет права запускать VZP.",
                     ephemeral=True,
                 )
 
