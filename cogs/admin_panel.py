@@ -847,6 +847,11 @@ class AdminPanel(commands.Cog):
             GeneralView(self)
         )
 
+        self.bot.add_view(RoleGroupsView(self))
+        self.bot.add_view(TierRolesView(self))
+        self.bot.add_view(HierarchyRolesView(self))
+        self.bot.add_view(HierarchyRolesView2(self))
+
         self.bot.add_view(
             TicketSettingsView(self)
         )
