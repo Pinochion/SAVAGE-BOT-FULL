@@ -51,9 +51,17 @@ CONFIG_COLUMNS = {
     "permissions_json": "TEXT NOT NULL DEFAULT '{}'",
 }
 
+class ClosingConnection(sqlite3.Connection):
+    """SQLite connection that also closes when used in a with-statement."""
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            return super().__exit__(exc_type, exc, tb)
+        finally:
+            self.close()
+
 def get_connection():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), timeout=30)
+    conn = sqlite3.connect(str(DB_PATH), timeout=30, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA busy_timeout = 30000")
