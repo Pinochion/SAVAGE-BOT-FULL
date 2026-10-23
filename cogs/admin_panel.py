@@ -514,11 +514,7 @@ class GeneralView(BackView):
         super().__init__(cog)
 
         self.add_item(OpenRoleConfigButton(cog, "👥 Группы доступа", "groups", row=0))
-        self.add_item(OpenRoleConfigButton(cog, "🏆 Тиры", "tiers", row=0))
         self.add_item(OpenRoleConfigButton(cog, "📋 Иерархия", "hierarchy", row=0))
-        self.add_item(OneRoleSelect("main_role_id", "Роль MAIN", row=1))
-        self.add_item(OneRoleSelect("default_role_id", "Роль DEFAULT", row=2))
-        self.add_item(OneRoleSelect("academy_role_id", "Роль ACADEMY", row=3))
         self.add_back_button()
 
 
@@ -1009,7 +1005,7 @@ class AdminPanel(commands.Cog):
                 "Выберите раздел настройки:\n\n"
 
                 "⚙️ **Общие настройки**\n"
-                "Роли групп доступа, тиров и иерархии.\n\n"
+                "Роли групп доступа и должностной иерархии.\n\n"
 
                 "🎫 **Тикеты**\n"
                 "Каналы и категории тикетов.\n\n"
@@ -1038,15 +1034,8 @@ class AdminPanel(commands.Cog):
                 f"Модератор: {roles_for('group_moderator_role_ids')}\n"
                 f"Checked: {roles_for('group_checked_role_ids')}\n"
                 f"Family: {roles_for('group_family_role_ids')}\n\n"
-                f"**Тиры (сортировка ивентов)**\n"
-                f"Tier 1: {roles_for('tier1_role_ids')}\n"
-                f"Tier 2: {roles_for('tier2_role_ids')}\n"
-                f"Tier 3: {roles_for('tier3_role_ids')}\n\n"
-                f"**Старые основные роли**\n"
-                f"MAIN: {role_mention(guild, config.get('main_role_id'))}\n"
-                f"DEFAULT: {role_mention(guild, config.get('default_role_id'))}\n"
-                f"ACADEMY: {role_mention(guild, config.get('academy_role_id'))}\n\n"
-                "Все участники могут запускать ивенты и записываться. В списке выше Tier 1, затем Tier 2, затем Tier 3; участники без тира — внизу."
+                "Порядок участников в /event и /vzp определяется временем записи: кто записался раньше, тот выше.\n\n"
+                "Все участники могут запускать ивенты и записываться."
             ),
             color=discord.Color.blue(),
         )
@@ -1140,7 +1129,7 @@ class AdminPanel(commands.Cog):
                 f"**Роли Family, которые упоминаются в /event:**\n{role_mentions(guild, family_ids)}\n\n"
                 f"**/vzp — канал:**\n{channel_mention(guild, config.get('reaction_vzp_channel_id') or config.get('reaction_channel_id'))}\n\n"
                 f"**Роль для упоминания в /vzp:**\n{role_mention(guild, config.get('vzp_role_id'))}\n\n"
-                "Все участники могут создавать ивенты и записываться. Список сортируется Tier 1 → Tier 2 → Tier 3."
+                "Все участники могут создавать ивенты и записываться. Список упорядочен по времени записи."
             ),
             color=discord.Color.blurple(),
         )
