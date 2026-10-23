@@ -242,7 +242,7 @@ class AdminPanelView(discord.ui.View):
 
     @discord.ui.button(
         label="⚙️ Общие настройки",
-        style=discord.ButtonStyle.primary,
+        style=discord.ButtonStyle.secondary,
         custom_id="admin:general",
         row=0,
     )
@@ -270,7 +270,7 @@ class AdminPanelView(discord.ui.View):
         )
 
     @discord.ui.button(
-        label="🎫 Тикеты",
+        label="⛓️ Тикеты",
         style=discord.ButtonStyle.secondary,
         custom_id="admin:tickets",
         row=0,
@@ -328,7 +328,7 @@ class AdminPanelView(discord.ui.View):
         )
 
     @discord.ui.button(
-        label="📄 Контракты",
+        label="𖤐 Контракты",
         style=discord.ButtonStyle.secondary,
         custom_id="admin:contracts",
         row=1,
@@ -357,7 +357,7 @@ class AdminPanelView(discord.ui.View):
         )
 
     @discord.ui.button(
-        label="🎬 Реакции",
+        label="▶ Реакции",
         style=discord.ButtonStyle.secondary,
         custom_id="admin:reactions",
         row=1,
@@ -443,7 +443,7 @@ class BackButton(discord.ui.Button):
 class OpenRoleConfigButton(discord.ui.Button):
     def __init__(self, cog, label, page, row=0):
         self.cog, self.page = cog, page
-        super().__init__(label=label, style=discord.ButtonStyle.primary, custom_id=f"admin:roles:{page}", row=row)
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, custom_id=f"admin:roles:{page}", row=row)
 
     async def callback(self, interaction: discord.Interaction):
         if not interaction.guild or not is_admin(interaction.user):
@@ -451,7 +451,7 @@ class OpenRoleConfigButton(discord.ui.Button):
         views = {"groups": RoleGroupsView, "tiers": TierRolesView, "hierarchy": HierarchyRolesView}
         embeds = {"groups": "Группы доступа", "tiers": "Настройка тиров", "hierarchy": "Должностная иерархия"}
         await interaction.response.edit_message(
-            embed=discord.Embed(title=embeds[self.page], description="Выберите роли в списках ниже. Настройки сохраняются автоматически.", color=discord.Color.blurple()),
+            embed=discord.Embed(title=embeds[self.page], description="Выберите роли в списках ниже. Настройки сохраняются автоматически.", color=0x0B0B0D),
             view=views[self.page](self.cog),
         )
 
@@ -485,13 +485,13 @@ class HierarchyRolesView(BackView):
 class HierarchyNextButton(discord.ui.Button):
     def __init__(self, cog):
         self.cog = cog
-        super().__init__(label="Следующие роли ▶", style=discord.ButtonStyle.primary, custom_id="admin:roles:hierarchy2", row=4)
+        super().__init__(label="Следующие роли ▶", style=discord.ButtonStyle.secondary, custom_id="admin:roles:hierarchy2", row=4)
 
     async def callback(self, interaction: discord.Interaction):
         if not interaction.guild or not is_admin(interaction.user):
             return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
         await interaction.response.edit_message(
-            embed=discord.Embed(title="📋 Должностная иерархия — часть 2", description="Выберите роли иерархии. Настройки сохраняются автоматически.", color=discord.Color.blurple()),
+            embed=discord.Embed(title="⛓️ Должностная иерархия — часть 2", description="Выберите роли иерархии. Настройки сохраняются автоматически.", color=0x0B0B0D),
             view=HierarchyRolesView2(self.cog),
         )
 
@@ -513,8 +513,8 @@ class GeneralView(BackView):
     def __init__(self, cog):
         super().__init__(cog)
 
-        self.add_item(OpenRoleConfigButton(cog, "👥 Группы доступа", "groups", row=0))
-        self.add_item(OpenRoleConfigButton(cog, "📋 Иерархия", "hierarchy", row=0))
+        self.add_item(OpenRoleConfigButton(cog, "♟️ Группы доступа", "groups", row=0))
+        self.add_item(OpenRoleConfigButton(cog, "⛓️ Иерархия", "hierarchy", row=0))
         self.add_back_button()
 
 
@@ -576,13 +576,13 @@ class TicketMemberRoleSelect(discord.ui.RoleSelect):
 class TicketMoreButton(discord.ui.Button):
     def __init__(self, cog):
         self.cog = cog
-        super().__init__(label="Доп. настройки ▶", style=discord.ButtonStyle.primary, custom_id="admin:tickets:more", row=4)
+        super().__init__(label="Доп. настройки ▶", style=discord.ButtonStyle.secondary, custom_id="admin:tickets:more", row=4)
 
     async def callback(self, interaction: discord.Interaction):
         if not interaction.guild or not is_admin(interaction.user):
             return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
         await interaction.response.edit_message(
-            embed=discord.Embed(title="🎫 Дополнительные настройки тикетов", description="Выберите роль, которую бот выдаёт кандидату после обработки тикета.", color=discord.Color.blurple()),
+            embed=discord.Embed(title="⛓️ Дополнительные настройки тикетов", description="Выберите роль, которую бот выдаёт кандидату после обработки тикета.", color=0x0B0B0D),
             view=TicketExtraSettingsView(self.cog),
         )
 
@@ -613,7 +613,7 @@ class TicketQuestionModal(discord.ui.Modal, title="Настройка вопро
 
 class TicketQuestionsButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label="❓ Настроить вопросы", style=discord.ButtonStyle.primary, custom_id="admin:tickets:questions", row=1)
+        super().__init__(label="❓ Настроить вопросы", style=discord.ButtonStyle.secondary, custom_id="admin:tickets:questions", row=1)
 
     async def callback(self, interaction: discord.Interaction):
         if not interaction.guild or not is_admin(interaction.user):
@@ -621,7 +621,7 @@ class TicketQuestionsButton(discord.ui.Button):
         questions = get_ticket_questions(interaction.guild.id)
         text = "\n".join(f"**{row['question_number']}.** {row['question']}" for row in questions) or "Вопросы не настроены."
         await interaction.response.send_message(
-            embed=discord.Embed(title="❓ Вопросы заявки", description=text + "\n\nНажмите кнопку, чтобы изменить вопрос по номеру 1–5. Пустой текст удаляет вопрос.", color=discord.Color.blurple()),
+            embed=discord.Embed(title="❓ Вопросы заявки", description=text + "\n\nНажмите кнопку, чтобы изменить вопрос по номеру 1–5. Пустой текст удаляет вопрос.", color=0x0B0B0D),
             view=TicketQuestionsView(),
             ephemeral=True,
         )
@@ -644,7 +644,7 @@ class TicketExtraSettingsView(BackView):
 class PublishTicketsButton(discord.ui.Button):
     def __init__(self, cog):
         self.cog = cog
-        super().__init__(label="📨 Опубликовать панель тикетов", style=discord.ButtonStyle.success, custom_id="admin:tickets:publish", row=4)
+        super().__init__(label="✉ Опубликовать панель тикетов", style=discord.ButtonStyle.secondary, custom_id="admin:tickets:publish", row=4)
 
     async def callback(self, interaction: discord.Interaction):
         if not interaction.guild or not is_admin(interaction.user):
@@ -814,7 +814,7 @@ class WarnSettingsView(BackView):
 class PublishContractsButton(discord.ui.Button):
     def __init__(self, cog):
         self.cog = cog
-        super().__init__(label="📄 Опубликовать панель контрактов", style=discord.ButtonStyle.success, custom_id="admin:contracts:publish", row=3)
+        super().__init__(label="𖤐 Опубликовать панель контрактов", style=discord.ButtonStyle.secondary, custom_id="admin:contracts:publish", row=3)
 
     async def callback(self, interaction: discord.Interaction):
         if not interaction.guild or not is_admin(interaction.user):
@@ -863,8 +863,8 @@ class ContractFamilyButton(discord.ui.Button):
         self.cog = cog
 
         super().__init__(
-            label="👥 Основная роль / семья",
-            style=discord.ButtonStyle.primary,
+            label="♟️ Основная роль / семья",
+            style=discord.ButtonStyle.secondary,
             custom_id="admin:contract_family",
             row=4,
         )
@@ -1007,19 +1007,19 @@ class AdminPanel(commands.Cog):
                 "⚙️ **Общие настройки**\n"
                 "Роли групп доступа и должностной иерархии.\n\n"
 
-                "🎫 **Тикеты**\n"
+                "⛓️ **Тикеты**\n"
                 "Каналы и категории тикетов.\n\n"
 
                 "⚠️ **Варны**\n"
                 "Канал и роли для WARN.\n\n"
 
-                "📄 **Контракты**\n"
+                "𖤐 **Контракты**\n"
                 "Канал, роли и набор контрактов.\n\n"
 
-                "🎬 **Реакции**\n"
+                "▶ **Реакции**\n"
                 "Настройки системы реакций."
             ),
-            color=discord.Color.blurple(),
+            color=0x0B0B0D,
         )
 
     def general_embed(self, guild):
@@ -1037,7 +1037,7 @@ class AdminPanel(commands.Cog):
                 "Порядок участников в /event и /vzp определяется временем записи: кто записался раньше, тот выше.\n\n"
                 "Все участники могут запускать ивенты и записываться."
             ),
-            color=discord.Color.blue(),
+            color=0x0B0B0D,
         )
 
     def tickets_embed(self, guild):
@@ -1048,7 +1048,7 @@ class AdminPanel(commands.Cog):
         )
 
         return discord.Embed(
-            title="🎫 Настройка тикетов",
+            title="⛓️ Настройка тикетов",
             description=(
                 f"**Канал панели:**\n"
                 f"{channel_mention(guild, settings.get('panel_channel_id'))}\n\n"
@@ -1059,7 +1059,7 @@ class AdminPanel(commands.Cog):
                 f"**Закрытые тикеты:**\n"
                 f"{channel_mention(guild, settings.get('closed_category_id'))}"
             ),
-            color=discord.Color.blue(),
+            color=0x0B0B0D,
         )
 
     def warns_embed(self, guild):
@@ -1079,7 +1079,7 @@ class AdminPanel(commands.Cog):
                 f"**Роли, выдающие WARN:**\n"
                 f"{role_mentions(guild, warn_roles)}"
             ),
-            color=discord.Color.orange(),
+            color=0x0B0B0D,
         )
 
     def contracts_embed(self, guild):
@@ -1090,7 +1090,7 @@ class AdminPanel(commands.Cog):
         if not family_ids and config.get("family_role_id"):
             family_ids = safe_parse_ids(str(config.get("family_role_id")))
         return discord.Embed(
-            title="📄 Настройки контрактов",
+            title="𖤐 Настройки контрактов",
             description=(
                 f"**Канал контрактов:**\n"
                 f"{channel_mention(guild, config.get('contract_channel_id'))}\n\n"
@@ -1098,7 +1098,7 @@ class AdminPanel(commands.Cog):
                 f"{role_mentions(guild, family_ids)}\n\n"
                 "Все участники могут запускать набор и записываться. Длительность набора — 15 минут."
             ),
-            color=discord.Color.blurple(),
+            color=0x0B0B0D,
         )
 
     def contract_family_embed(self, guild):
@@ -1106,7 +1106,7 @@ class AdminPanel(commands.Cog):
         config = get_config(guild.id)
 
         return discord.Embed(
-            title="👥 Основная роль / семья",
+            title="♟️ Основная роль / семья",
             description=(
                 "Укажите роль, которую бот будет "
                 "упоминать при запуске контракта.\n\n"
@@ -1114,7 +1114,7 @@ class AdminPanel(commands.Cog):
                 f"**Текущая роль:** "
                 f"{role_mention(guild, config.get('family_role_id'))}"
             ),
-            color=discord.Color.blurple(),
+            color=0x0B0B0D,
         )
 
     def reactions_embed(self, guild):
@@ -1123,7 +1123,7 @@ class AdminPanel(commands.Cog):
         if not family_ids and config.get("family_role_id"):
             family_ids = safe_parse_ids(str(config.get("family_role_id")))
         return discord.Embed(
-            title="🎬 Настройка ивентов",
+            title="▶ Настройка ивентов",
             description=(
                 f"**Обычный /event — канал:**\n{channel_mention(guild, config.get('reaction_channel_id'))}\n\n"
                 f"**Роли Family, которые упоминаются в /event:**\n{role_mentions(guild, family_ids)}\n\n"
@@ -1131,7 +1131,7 @@ class AdminPanel(commands.Cog):
                 f"**Роль для упоминания в /vzp:**\n{role_mention(guild, config.get('vzp_role_id'))}\n\n"
                 "Все участники могут создавать ивенты и записываться. Список упорядочен по времени записи."
             ),
-            color=discord.Color.blurple(),
+            color=0x0B0B0D,
         )
 
     # =====================================================
