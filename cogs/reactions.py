@@ -67,10 +67,18 @@ def event_embed(guild, event, config):
         description += f"**Время:** {event['event_time']}\n"
         if event.get("event_type") == "vzp":
             try:
-                dt = datetime.strptime(event["event_time"], "%H:%M")
-                dt += timedelta(minutes=20)
-                description += f"**Начало ВЗП:** {dt.strftime('%H:%M')}\n"
-            except ValueError:
+                raw_time = event["event_time"]
+                parsed = None
+                for fmt in ("%H:%M", "%d.%m.%Y %H:%M", "%d/%m/%Y %H:%M"):
+                    try:
+                        parsed = datetime.strptime(raw_time, fmt)
+                        break
+                    except ValueError:
+                        continue
+                if parsed is not None:
+                    parsed += timedelta(minutes=20)
+                    description += f"**Начало ВЗП:** {parsed.strftime('%d.%m.%Y %H:%M') if len(raw_time) > 5 else parsed.strftime('%H:%M')}\n"
+            except (TypeError, ValueError):
                 pass
     description += f"**Участники ({len(ids)}):**\n"
     description += "\n".join(f"{i}. {member.mention}" for i, member in enumerate(members, 1)) if members else "Пока никто не записался."
