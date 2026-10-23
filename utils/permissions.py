@@ -78,5 +78,32 @@ def can_join_contract(member):
     return has_group_access(member, "contracts_join")
 
 
+def has_role_or_higher(member, role_id):
+    """True when the member's highest role is at or above the configured role."""
+    if getattr(member, "guild", None) is None:
+        return False
+
+    permissions = getattr(member, "guild_permissions", None)
+    if permissions and permissions.administrator:
+        return True
+
+    if not role_id:
+        return False
+
+    try:
+        required_role = member.guild.get_role(int(role_id))
+    except (TypeError, ValueError):
+        required_role = None
+
+    if required_role is None:
+        return False
+
+    top_role = getattr(member, "top_role", None)
+    return top_role is not None and top_role.position >= required_role.position
+
+
 def can_start_reaction(member):
-    return has_group_access(member, "reactions")
+    if getattr(member, "guild", None) is None:
+        return False
+    cfg = get_config(member.guild.id)
+    return has_role_or_higher(member, cfg.get("reaction_access_role_id"))
