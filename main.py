@@ -36,6 +36,13 @@ class SavageBot(commands.Bot):
                 print('✅ Устаревшие глобальные команды очищены')
             except Exception as e:
                 print(f'❌ Ошибка синхронизации: {e}')
+        else:
+            # Without GUILD_ID, sync globally so removed commands disappear there too.
+            try:
+                synced=await self.tree.sync()
+                print(f'✅ Глобально синхронизировано команд: {len(synced)}')
+            except Exception as e:
+                print(f'❌ Ошибка глобальной синхронизации: {e}')
     async def on_ready(self):
         print(f'🤖 S A V A G E online: {self.user} ({self.user.id})')
         for name in ('contracts','reactions'):
