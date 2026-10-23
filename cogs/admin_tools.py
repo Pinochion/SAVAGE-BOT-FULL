@@ -58,6 +58,8 @@ class VoiceToolsView(discord.ui.View):
         if not interaction.user.voice or not interaction.user.voice.channel:
             return await interaction.response.send_message("Сначала зайдите в голосовой канал.", ephemeral=True)
         target = interaction.user.voice.channel
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
         moved, failed = 0, 0
         for channel in interaction.guild.voice_channels:
             for member in list(channel.members):
@@ -68,7 +70,7 @@ class VoiceToolsView(discord.ui.View):
                     moved += 1
                 except discord.HTTPException:
                     failed += 1
-        await interaction.response.send_message(f"Перемещено: {moved}. Не удалось переместить: {failed}.", ephemeral=True)
+        await interaction.followup.send(f"Перемещено: {moved}. Не удалось переместить: {failed}.", ephemeral=True)
 
     @discord.ui.button(label="😴 Спящих в AFK", style=discord.ButtonStyle.secondary, custom_id="admin-tools:move-deaf")
     async def move_deaf(self, interaction, button):
@@ -89,7 +91,7 @@ class VoiceToolsView(discord.ui.View):
                     moved += 1
                 except discord.HTTPException:
                     failed += 1
-        await interaction.response.send_message(f"В AFK перемещено: {moved}. Ошибок: {failed}.", ephemeral=True)
+        await interaction.followup.send(f"В AFK перемещено: {moved}. Ошибок: {failed}.", ephemeral=True)
 
     @discord.ui.button(label="🔊 Размутить всех", style=discord.ButtonStyle.secondary, custom_id="admin-tools:unmute-all")
     async def unmute_all(self, interaction, button):
