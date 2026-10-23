@@ -23,6 +23,7 @@ jobs:
   ui-smoke:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         group: [admin, tickets, contracts, reactions, voice]
     steps:
