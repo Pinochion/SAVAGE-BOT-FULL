@@ -180,7 +180,7 @@ class AdminTools(commands.Cog):
                 except (discord.Forbidden, discord.HTTPException):
                     break
                 attempts += 1
-            if member.voice and member.voice.channel and not (member.voice.self_deaf or member.voice.deaf):
+            if member.voice and member.voice.channel and not member.voice.self_deaf:
                 try:
                     await member.move_to(original_channel, reason="Возврат после включения звука")
                 except discord.HTTPException:
