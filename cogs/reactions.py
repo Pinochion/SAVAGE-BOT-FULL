@@ -84,7 +84,7 @@ def event_embed(guild, event, config):
     description += "\n".join(f"{i}. {member.mention}" for i, member in enumerate(members, 1)) if members else "Пока никто не записался."
     if event.get("slots"):
         description += f"\n\n**Мест:** {event['slots']}"
-    return discord.Embed(title=f"🎮 {title}", description=description, color=discord.Color.blurple())
+    return discord.Embed(title=f"𖤐 {title}", description=description, color=0x0B0B0D)
 
 class ParticipantModal(discord.ui.Modal):
     target = discord.ui.TextInput(label="Упоминание или ID участника", placeholder="@участник или 123456789", max_length=80)
@@ -112,7 +112,7 @@ class EventView(discord.ui.View):
                 else: action = "remove"
                 item.custom_id = f"savage:event:{action}:{self.event_id}"
 
-    @discord.ui.button(label="Записаться", style=discord.ButtonStyle.success, custom_id="savage:event:join")
+    @discord.ui.button(label="Записаться", style=discord.ButtonStyle.secondary, custom_id="savage:event:join")
     async def join(self, interaction, button):
         await self.cog.change_member(interaction, self.event_id, interaction.user.id, True)
 
@@ -120,11 +120,11 @@ class EventView(discord.ui.View):
     async def leave(self, interaction, button):
         await self.cog.change_member(interaction, self.event_id, interaction.user.id, False)
 
-    @discord.ui.button(label="Добавить участника", style=discord.ButtonStyle.primary, custom_id="savage:event:add")
+    @discord.ui.button(label="Добавить участника", style=discord.ButtonStyle.secondary, custom_id="savage:event:add")
     async def add(self, interaction, button):
         await interaction.response.send_modal(ParticipantModal(self.cog, self.event_id, True))
 
-    @discord.ui.button(label="Убрать участника", style=discord.ButtonStyle.danger, custom_id="savage:event:remove")
+    @discord.ui.button(label="Убрать участника", style=discord.ButtonStyle.secondary, custom_id="savage:event:remove")
     async def remove(self, interaction, button):
         await interaction.response.send_modal(ParticipantModal(self.cog, self.event_id, False))
 
