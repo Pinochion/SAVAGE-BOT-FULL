@@ -435,6 +435,50 @@ class BackButton(discord.ui.Button):
 
 
 # =========================================================
+# EXTRA GENERAL SETTINGS: permission groups, tiers and hierarchy
+# =========================================================
+class OpenRoleConfigButton(discord.ui.Button):
+    def __init__(self, cog, label, page, row=0):
+        self.cog, self.page = cog, page
+        super().__init__(label=label, style=discord.ButtonStyle.primary, custom_id=f"admin:roles:{page}", row=row)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        views = {"groups": RoleGroupsView, "tiers": TierRolesView, "hierarchy": HierarchyRolesView}
+        embeds = {"groups": "Группы доступа", "tiers": "Настройка тиров", "hierarchy": "Должностная иерархия"}
+        await interaction.response.edit_message(
+            embed=discord.Embed(title=embeds[self.page], description="Выберите роли в списках ниже. Настройки сохраняются автоматически.", color=discord.Color.blurple()),
+            view=views[self.page](self.cog),
+        )
+
+class RoleGroupsView(BackView):
+    def __init__(self, cog):
+        super().__init__(cog)
+        self.add_item(RolesSelect("group_admin_role_ids", "Группа: Администратор", 0, 10, row=0))
+        self.add_item(RolesSelect("group_moderator_role_ids", "Группа: Модератор", 0, 10, row=1))
+        self.add_item(RolesSelect("group_checked_role_ids", "Группа: Checked", 0, 10, row=2))
+        self.add_item(RolesSelect("group_family_role_ids", "Группа: Family", 0, 10, row=3))
+        self.add_back_button()
+
+class TierRolesView(BackView):
+    def __init__(self, cog):
+        super().__init__(cog)
+        self.add_item(RolesSelect("tier1_role_ids", "Tier 1 — высший приоритет", 0, 10, row=0))
+        self.add_item(RolesSelect("tier2_role_ids", "Tier 2 — средний приоритет", 0, 10, row=1))
+        self.add_item(RolesSelect("tier3_role_ids", "Tier 3 — базовый приоритет", 0, 10, row=2))
+        self.add_back_button()
+
+class HierarchyRolesView(BackView):
+    def __init__(self, cog):
+        super().__init__(cog)
+        self.add_item(RolesSelect("job_owner_role_ids", "Иерархия: Owner", 0, 10, row=0))
+        self.add_item(RolesSelect("job_deputy_owner_role_ids", "Иерархия: Deputy Owner", 0, 10, row=1))
+        self.add_item(RolesSelect("job_heads_role_ids", "Иерархия: Head's", 0, 10, row=2))
+        self.add_item(RolesSelect("job_high_role_ids", "Иерархия: High", 0, 10, row=3))
+        self.add_back_button()
+
+# =========================================================
 # GENERAL
 # =========================================================
 
@@ -443,49 +487,14 @@ class GeneralView(BackView):
     def __init__(self, cog):
         super().__init__(cog)
 
-        self.add_item(
-            RolesSelect(
-                "admin_role_ids",
-                "Администраторы",
-                0,
-                10,
-                row=0,
-            )
-        )
-
-        self.add_item(
-            RolesSelect(
-                "recruiter_role_ids",
-                "Рекруты",
-                0,
-                10,
-                row=1,
-            )
-        )
-
-        self.add_item(
-            OneRoleSelect(
-                "main_role_id",
-                "Роль MAIN",
-                row=2,
-            )
-        )
-
-        self.add_item(
-            OneRoleSelect(
-                "default_role_id",
-                "Роль DEFAULT",
-                row=3,
-            )
-        )
-
-        self.add_item(
-            OneRoleSelect(
-                "academy_role_id",
-                "Роль ACADEMY",
-                row=4,
-            )
-        )
+        self.add_item(OpenRoleConfigButton(cog, "👥 Группы доступа", "groups", row=0))
+        self.add_item(OpenRoleConfigButton(cog, "🏆 Тиры", "tiers", row=0))
+        self.add_item(OpenRoleConfigButton(cog, "📋 Иерархия", "hierarchy", row=0))
+        self.add_item(RolesSelect("admin_role_ids", "Администраторы", 0, 10, row=1))
+        self.add_item(RolesSelect("recruiter_role_ids", "Рекрутеры", 0, 10, row=2))
+        self.add_item(OneRoleSelect("main_role_id", "Роль MAIN", row=3))
+        self.add_item(OneRoleSelect("default_role_id", "Роль DEFAULT", row=3))
+        self.add_item(OneRoleSelect("academy_role_id", "Роль ACADEMY", row=3))
 
 
 # =========================================================
@@ -880,8 +889,7 @@ class AdminPanel(commands.Cog):
                 "Выберите раздел настройки:\n\n"
 
                 "⚙️ **Общие настройки**\n"
-                "Роли администратора, рекрутёров "
-                "и основные роли.\n\n"
+                "Роли групп доступа, тиров и иерархии.\n\n"
 
                 "🎫 **Тикеты**\n"
                 "Каналы и категории тикетов.\n\n"
@@ -1049,8 +1057,7 @@ class AdminPanel(commands.Cog):
                 f"**VZP — роли запуска:**\n"
                 f"{role_mentions(guild, vzp_roles)}\n\n"
 
-                "Система участников использует роли:\n"
-                "MAIN → DEFAULT → ACADEMY."
+                "Все могут запускать ивенты и записываться. Список участников сортируется по Tier 1 → Tier 2 → Tier 3; без тира участник ниже."
             ),
             color=discord.Color.blurple(),
         )
