@@ -976,7 +976,7 @@ class AdminPanel(commands.Cog):
     def main_embed(self, guild):
 
         return discord.Embed(
-            title="⚙️ Панель администратора",
+            title="⚙️ УПРАВЛЕНИЕ БОТОМ",
             description=(
                 "Выберите раздел настройки:\n\n"
 
