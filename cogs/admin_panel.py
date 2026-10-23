@@ -292,8 +292,8 @@ class TicketSettingsPage2(SimpleSettings):
         settings=get_ticket_settings(guild.id)
         role=guild.get_role(settings['member_role_id']) if settings['member_role_id'] else None
         questions=get_ticket_questions(guild.id)
-        question_text='\\n'.join(f"{row['question_number']}. {row['question']}" for row in questions) or 'Не настроены'
-        return discord.Embed(title='🎫 Тикеты — дополнительные настройки',description=f'**Роль принятого:** {role.mention if role else "Не настроено"}\\n\\n**Вопросы анкеты:**\\n{question_text}\\n\\nЗдесь можно изменить вопросы и опубликовать панель подачи заявки.',color=discord.Color.blue())
+        question_text='\n'.join(f"{row['question_number']}. {row['question']}" for row in questions) or 'Не настроены'
+        return discord.Embed(title='🎫 Тикеты — дополнительные настройки',description=f'**Роль принятого:** {role.mention if role else "Не настроено"}\n\n**Вопросы анкеты:**\n{question_text}\n\nЗдесь можно изменить вопросы и опубликовать панель подачи заявки.',color=discord.Color.blue())
 
 class TicketQuestionsButton(discord.ui.Button):
     def __init__(self):
@@ -320,16 +320,16 @@ class TicketPublishButton(discord.ui.Button):
         embed=discord.Embed(
             title='ТИКЕТЫ В СЕМЬЮ SAVAGE',
             description=(
-                '## Требования:\\n'
-                '> Возраст 15+\\n'
-                '> Активность и участие во фракционном/семейном контенте.\\n'
-                '> Готовность сменить фамилию.\\n'
-                '> Персонаж с 5 уровнем.\\n\\n'
-                '## Что мы можем предложить:\\n'
-                '> Дружный состав семьи.\\n'
-                '> Опытный high стак.\\n'
-                '> Блат во фракциях.\\n'
-                '> Премиальный автопарк.\\n\\n'
+                '## Требования:\n'
+                '> Возраст 15+\n'
+                '> Активность и участие во фракционном/семейном контенте.\n'
+                '> Готовность сменить фамилию.\n'
+                '> Персонаж с 5 уровнем.\n\n'
+                '## Что мы можем предложить:\n'
+                '> Дружный состав семьи.\n'
+                '> Опытный high стак.\n'
+                '> Блат во фракциях.\n'
+                '> Премиальный автопарк.\n\n'
                 'Нажми кнопку **«Подать заявку»** ниже, чтобы заполнить анкету.'
             ),
             color=discord.Color.from_rgb(0,0,0)
@@ -362,9 +362,34 @@ class ReactionSettings(SimpleSettings):
         self.add_item(ChannelSetting('reaction_channel_id','Канал обычных реакций',row=0))
         self.add_item(ChannelSetting('reaction_vzp_channel_id','Канал VZP',row=1))
         self.add_item(RoleSetting('reaction_access_role_id','Право запуска наборов: роль и выше',row=2))
-        self.add_item(StartReactionButton(cog,'default',row=3))
-        self.add_item(StartReactionButton(cog,'vzp',row=3))
+        self.add_item(PublishReactionPanelButton(cog,row=3))
         self.add_back('manage')
+
+class PublishReactionPanelButton(discord.ui.Button):
+    def __init__(self,cog,row=3):
+        self.cog=cog
+        super().__init__(label='📨 Опубликовать панель запуска наборов',style=discord.ButtonStyle.success,row=row,custom_id='savage:reaction:publish-panel')
+    async def callback(self,i):
+        if not i.guild or not has_group_access(i.user,'settings'):
+            return await i.response.send_message('❌ Нет доступа.',ephemeral=True)
+        cfg=get_config(i.guild.id)
+        channel_id=cfg.get('reaction_channel_id') or cfg.get('reaction_vzp_channel_id')
+        channel=i.guild.get_channel(channel_id) if channel_id else None
+        if not isinstance(channel,discord.TextChannel):
+            return await i.response.send_message('❌ Сначала настройте канал обычных реакций или VZP.',ephemeral=True)
+        embed=discord.Embed(
+            title='🎬 Запуск набора',
+            description='Нажмите кнопку нужного типа набора. Запуск доступен роли, выбранной в настройках реакций, и всем ролям выше.',
+            color=discord.Color.blurple()
+        )
+        await channel.send(embed=embed,view=ReactionLaunchView(self.cog))
+        await i.response.send_message(f'✅ Панель запуска опубликована в {channel.mention}.',ephemeral=True)
+
+class ReactionLaunchView(discord.ui.View):
+    def __init__(self,cog):
+        super().__init__(timeout=None)
+        self.add_item(StartReactionButton(cog,'default',row=0))
+        self.add_item(StartReactionButton(cog,'vzp',row=0))
 
 class StartReactionButton(discord.ui.Button):
     def __init__(self,cog,reaction_type,row=3):
@@ -465,7 +490,7 @@ class VoicePanelView(discord.ui.View):
 class AdminPanel(commands.Cog):
     def __init__(self,bot): self.bot=bot; self.unmute_targets={}; self.unmute_task.start()
     async def cog_load(self):
-        for view in (ManagePanel(self),GeneralMenu(self),GroupRoles(self),HierarchyRoles(self),HierarchyRolesPage2(self),TierRoles(self),PermissionSettings(self),PermissionSettingsPage2(self),TicketSettings(self),TicketSettingsPage2(self),WarnSettings(self),ContractSettings(self),ReactionSettings(self),VoicePanelView(self)):
+        for view in (ManagePanel(self),GeneralMenu(self),GroupRoles(self),HierarchyRoles(self),HierarchyRolesPage2(self),TierRoles(self),PermissionSettings(self),PermissionSettingsPage2(self),TicketSettings(self),TicketSettingsPage2(self),WarnSettings(self),ContractSettings(self),ReactionSettings(self),ReactionLaunchView(self),VoicePanelView(self)):
             self.bot.add_view(view)
     def manage_embed(self,g): return discord.Embed(title='⚙️ УПРАВЛЕНИЕ БОТОМ',description='Настройки тикетов, WARN, контрактов, реакций и прав доступа. Выберите раздел ниже.',color=discord.Color.blurple())
     def voice_embed(self,g): return discord.Embed(title='🛠️ АДМИН ПАНЕЛЬ',description='📣 **Всех ко мне** — переместить участников в ваш голосовой канал.\n😴 **Спящих в AFK** — переместить участников с выключенными наушниками в AFK.\n🔔 **Размутить** — выбрать участника, уведомить его и перемещать до снятия deaf.\n🔔 **Размутить всех** — то же самое для всех участников с выключенными наушниками.\n✉️ **Рассылка в ЛС** — отправить текст участникам семейства.',color=discord.Color.dark_teal())
@@ -476,16 +501,16 @@ class AdminPanel(commands.Cog):
         s=dict(get_ticket_settings(g.id))
         staff_text=roles_text(g,get_staff_role_ids(g.id))
         member_role=mention_role(g,s.get('member_role_id'))
-        return discord.Embed(title='🎫 Настройка тикетов',description=f"Канал панели: {mention_channel(g,s.get('panel_channel_id'))}\\nОткрытая категория: {mention_channel(g,s.get('open_category_id'))}\\nЗакрытая категория: {mention_channel(g,s.get('closed_category_id'))}\\nРоли сотрудников: {staff_text}\\nРоль принятого: {member_role}",color=discord.Color.blue())
+        return discord.Embed(title='🎫 Настройка тикетов',description=f"Канал панели: {mention_channel(g,s.get('panel_channel_id'))}\nОткрытая категория: {mention_channel(g,s.get('open_category_id'))}\nЗакрытая категория: {mention_channel(g,s.get('closed_category_id'))}\nРоли сотрудников: {staff_text}\nРоль принятого: {member_role}",color=discord.Color.blue())
     def warns_embed(self,g):
         c=get_config(g.id)
-        return discord.Embed(title='⚠️ Настройки WARN',description=f"Канал WARN: {mention_channel(g,c.get('warn_channel_id'))}\\nПраво выдавать и снимать WARN: {mention_role(g,c.get('warn_access_role_id'))} и все роли выше.",color=discord.Color.orange())
+        return discord.Embed(title='⚠️ Настройки WARN',description=f"Канал WARN: {mention_channel(g,c.get('warn_channel_id'))}\nПраво выдавать и снимать WARN: {mention_role(g,c.get('warn_access_role_id'))} и все роли выше.",color=discord.Color.orange())
     def contracts_embed(self,g):
         c=get_config(g.id)
         return discord.Embed(title='📄 Настройки контрактов',description=f"Канал: {mention_channel(g,c.get('contract_channel_id'))}\nРоль семьи: {mention_role(g,c.get('contract_role_id') or c.get('family_role_id'))}\n\nПрава запуска и записи настраиваются ниже по группам ролей.",color=discord.Color.blurple())
     def reactions_embed(self,g):
         c=get_config(g.id)
-        return discord.Embed(title='🎬 Настройки реакций',description=f"Обычные реакции: {mention_channel(g,c.get('reaction_channel_id'))}\\nVZP: {mention_channel(g,c.get('reaction_vzp_channel_id'))}\\nРоль запуска наборов: {mention_role(g,c.get('reaction_access_role_id'))} и все роли выше.\\n\\nЗапуск обычного набора и VZP доступен кнопками в этом разделе.",color=discord.Color.blurple())
+        return discord.Embed(title='🎬 Настройки реакций',description=f"Обычные реакции: {mention_channel(g,c.get('reaction_channel_id'))}\nVZP: {mention_channel(g,c.get('reaction_vzp_channel_id'))}\nРоль запуска наборов: {mention_role(g,c.get('reaction_access_role_id'))} и все роли выше.\n\nЗапуск обычного набора и VZP доступен кнопками в этом разделе.",color=discord.Color.blurple())
     def start_unmute_cycle(self,member):
         if member.voice and member.voice.self_deaf: self.unmute_targets[member.id]=member.voice.channel.id
     def cog_unload(self):
