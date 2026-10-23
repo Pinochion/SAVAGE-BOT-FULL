@@ -17,3 +17,4 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements.txt
       - run: python -m compileall -q .
+      - run: python -c "import cogs.admin_panel, cogs.admin_tools, cogs.contracts, cogs.reactions, cogs.tickets, cogs.warns"
