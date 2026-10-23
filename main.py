@@ -37,7 +37,7 @@ class SavageBot(commands.Bot):
             "cogs.general",
             "cogs.tickets",
             "cogs.warns",
-            "cogs.admin_panel",
+            "cogs.admin_panel",\n            "cogs.admin_tools",
             "cogs.contracts",
             "cogs.reactions",
         )
