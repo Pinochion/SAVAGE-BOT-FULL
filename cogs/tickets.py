@@ -569,9 +569,9 @@ async def update_application_message(
     old_embed = message.embeds[0]
 
     embed = discord.Embed(
-        title=old_embed.title or "📋 Заявка в S A V A G E",
+        title=old_embed.title or "⛓️ Заявка в S A V A G E",
         description=old_embed.description or "",
-        color=color,
+        color=0x0B0B0D,
         timestamp=old_embed.timestamp
     )
 
@@ -774,7 +774,7 @@ class TicketPanelView(
 
     @discord.ui.button(
         label="Подать заявку",
-        emoji="📋",
+        emoji="⛓️",
         style=discord.ButtonStyle.secondary,
         custom_id="savage_ticket_create"
     )
@@ -821,7 +821,7 @@ class TicketActionsView(
     @discord.ui.button(
         label="Отклонить",
         emoji="❌",
-        style=discord.ButtonStyle.danger,
+        style=discord.ButtonStyle.secondary,
         custom_id="savage_ticket_reject"
     )
     async def reject_button(
@@ -847,7 +847,7 @@ class TicketActionsView(
     @discord.ui.button(
         label="Принять",
         emoji="✅",
-        style=discord.ButtonStyle.success,
+        style=discord.ButtonStyle.secondary,
         custom_id="savage_ticket_accept"
     )
     async def accept_button(
@@ -872,8 +872,8 @@ class TicketActionsView(
 
     @discord.ui.button(
         label="Обзвон",
-        emoji="📞",
-        style=discord.ButtonStyle.primary,
+        emoji="☎️",
+        style=discord.ButtonStyle.secondary,
         custom_id="savage_ticket_call"
     )
     async def call_button(
@@ -1284,7 +1284,7 @@ class Tickets(commands.Cog):
         )
 
         embed = discord.Embed(
-            title="📋 Заявка в S A V A G E",
+            title="⛓️ Заявка в S A V A G E",
 
             description=(
                 f"**Заявитель:** {member.mention}\n"
@@ -1292,7 +1292,7 @@ class Tickets(commands.Cog):
                 f"**Discord ID:** `{member.id}`"
             ),
 
-            color=discord.Color.yellow(),
+            color=0x0B0B0D,
 
             timestamp=datetime.now()
         )
@@ -1326,7 +1326,7 @@ class Tickets(commands.Cog):
 
         embed.add_field(
             name="Статус",
-            value="🟡 На рассмотрении",
+            value="◈ На рассмотрении",
             inline=False
         )
 
@@ -1439,7 +1439,7 @@ class Tickets(commands.Cog):
                         f"**Причина:** {reason}"
                     ),
 
-                    color=discord.Color.red()
+                    color=0x0B0B0D
                 )
 
                 await applicant.send(
@@ -1451,7 +1451,7 @@ class Tickets(commands.Cog):
 
         await update_application_message(
             application_message,
-            "🔴 Отклонена",
+            "◼️ Отклонена",
             discord.Color.red(),
             f"Отклонено по причине: {reason}"
         )
@@ -1471,7 +1471,7 @@ class Tickets(commands.Cog):
                 f"**Причина:** {reason}"
             ),
 
-            color=discord.Color.red()
+            color=0x0B0B0D
         )
 
         await channel.send(
@@ -1595,13 +1595,13 @@ class Tickets(commands.Cog):
                 title="S A V A G E • Вы приняты!",
 
                 description=(
-                    "🎉 Поздравляем!\n\n"
+                    "✦ Поздравляем!\n\n"
                     "Ваша заявка была одобрена.\n"
                     "Добро пожаловать в семью "
                     "**S A V A G E**!"
                 ),
 
-                color=discord.Color.green()
+                color=0x0B0B0D
             )
 
             await applicant.send(
@@ -1613,7 +1613,7 @@ class Tickets(commands.Cog):
 
         await update_application_message(
             interaction.message,
-            "🟢 Принята",
+            "◈ Принята",
             discord.Color.green(),
             "Принят"
         )
@@ -1641,7 +1641,7 @@ class Tickets(commands.Cog):
                 f"**Роль:** {member_role.mention}"
             ),
 
-            color=discord.Color.green()
+            color=0x0B0B0D
         )
 
         await channel.send(
@@ -1834,19 +1834,19 @@ class Tickets(commands.Cog):
         # ----------------------------------------------------
 
         embed = discord.Embed(
-            title="📞 Вызов на обзвон",
+            title="☎️ Вызов на обзвон",
 
             description=(
                 f"{applicant.mention}, вас готовы "
                 f"принять на обзвон!\n\n"
-                f"🎙️ **Зайдите в голосовой канал:** "
+                f"♬ **Зайдите в голосовой канал:** "
                 f"{call_channel.mention}\n\n"
                 f"После подключения ожидайте рекрутера.\n"
                 f"**Рекрутер:** "
                 f"{interaction.user.mention}"
             ),
 
-            color=discord.Color.blurple()
+            color=0x0B0B0D
         )
 
         embed.set_footer(
@@ -1866,8 +1866,8 @@ class Tickets(commands.Cog):
             (
                 f"✅ Кандидат {applicant.mention} "
                 f"вызван на обзвон.\n\n"
-                f"🎙️ Канал: {call_channel.mention}\n"
-                f"🎖️ Роль выдана: {call_role.mention}"
+                f"♬ Канал: {call_channel.mention}\n"
+                f"✧ Роль выдана: {call_role.mention}"
             ),
             ephemeral=True
         )
@@ -2018,7 +2018,7 @@ class Tickets(commands.Cog):
                 )
 
         await interaction.response.send_message(
-            "👥 **Роли рекрутов:**\n"
+            "♟️ **Роли рекрутов:**\n"
             + "\n".join(
                 f"• {role}"
                 for role in mentions
@@ -2286,17 +2286,17 @@ class Tickets(commands.Cog):
 
         embed = discord.Embed(
             title="⚙️ Настройки тикетов",
-            color=discord.Color.blurple()
+            color=0x0B0B0D
         )
 
         embed.add_field(
-            name="👥 Рекрутеры",
+            name="♟️ Рекрутеры",
             value=staff_text,
             inline=False
         )
 
         embed.add_field(
-            name="🎖️ Роль принятого",
+            name="✧ Роль принятого",
             value=(
                 member_role.mention
                 if member_role
@@ -2306,7 +2306,7 @@ class Tickets(commands.Cog):
         )
 
         embed.add_field(
-            name="📂 Открытые заявки",
+            name="▣ Открытые заявки",
             value=(
                 open_category.mention
                 if isinstance(
@@ -2319,7 +2319,7 @@ class Tickets(commands.Cog):
         )
 
         embed.add_field(
-            name="📁 Закрытые заявки",
+            name="▣ Закрытые заявки",
             value=(
                 closed_category.mention
                 if isinstance(
@@ -2332,7 +2332,7 @@ class Tickets(commands.Cog):
         )
 
         embed.add_field(
-            name="📋 Панель",
+            name="⛓️ Панель",
             value=(
                 panel_channel.mention
                 if isinstance(
@@ -2388,7 +2388,7 @@ class Tickets(commands.Cog):
             )
 
         await interaction.response.send_message(
-            "📝 **Вопросы заявки:**\n\n"
+            "✎ **Вопросы заявки:**\n\n"
             + "\n".join(lines),
             ephemeral=True
         )
@@ -2555,7 +2555,7 @@ class Tickets(commands.Cog):
                     "ниже, чтобы заполнить анкету."
                 ),
 
-                color=discord.Color.from_rgb(0, 0, 0)
+                color=0x0B0B0D
             )
 
             embed.set_image(
