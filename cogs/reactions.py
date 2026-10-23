@@ -1511,7 +1511,7 @@ class Reactions(commands.Cog):
 
         except Exception as error:
             print(
-                "[SAVAGE][REACTIONS] /reaction-vzp: "
+                "[SAVAGE][REACTIONS] /vzp: "
                 f"{type(error).__name__}: {error}"
             )
 
