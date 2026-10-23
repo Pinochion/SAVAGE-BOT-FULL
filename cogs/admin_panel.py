@@ -512,7 +512,7 @@ class AdminPanel(commands.Cog):
         return discord.Embed(title='📄 Настройки контрактов',description=f"Канал: {mention_channel(g,c.get('contract_channel_id'))}\nРоль семьи: {mention_role(g,c.get('contract_role_id') or c.get('family_role_id'))}\n\nПрава запуска и записи настраиваются ниже по группам ролей.",color=discord.Color.blurple())
     def reactions_embed(self,g):
         c=get_config(g.id)
-        return discord.Embed(title='🎬 Настройки реакций',description=f"Обычные реакции: {mention_channel(g,c.get('reaction_channel_id'))}\nVZP: {mention_channel(g,c.get('reaction_vzp_channel_id'))}\nРоль запуска наборов: {mention_role(g,c.get('reaction_access_role_id'))} и все роли выше.\n\nЗапуск обычного набора и VZP доступен кнопками в этом разделе.",color=discord.Color.blurple())
+        return discord.Embed(title='🎬 Настройки реакций',description=f"Обычные реакции: {mention_channel(g,c.get('reaction_channel_id'))}\nVZP: {mention_channel(g,c.get('reaction_vzp_channel_id'))}\nРоль запуска наборов: {mention_role(g,c.get('reaction_access_role_id'))} и все роли выше.\n\nНажмите «Опубликовать панель запуска наборов», чтобы участники с нужной ролью могли запускать наборы кнопками.",color=discord.Color.blurple())
     def start_unmute_cycle(self,member):
         if member.voice and member.voice.self_deaf: self.unmute_targets[member.id]=member.voice.channel.id
     def cog_unload(self):
