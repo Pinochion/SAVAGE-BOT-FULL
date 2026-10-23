@@ -1,4 +1,5 @@
-"""Smoke test: persistent Discord views must construct without component layout errors."""
+"""Smoke test for Discord UI view constructors."""
+import sys
 from cogs.admin_panel import (
     AdminPanelView, GeneralView, RoleGroupsView, TierRolesView,
     HierarchyRolesView, HierarchyRolesView2, TicketSettingsView,
@@ -14,14 +15,16 @@ class Dummy:
 
 cog = Dummy()
 cog.bot = Dummy()
-views = [
-    AdminPanelView(cog), GeneralView(cog), RoleGroupsView(cog),
-    TierRolesView(cog), HierarchyRolesView(cog), HierarchyRolesView2(cog),
-    TicketSettingsView(cog), TicketExtraSettingsView(cog), WarnSettingsView(cog),
-    ContractSettingsView(cog), ContractFamilyView(cog), ReactionSettingsView(cog),
-    VoiceToolsView(cog), ContractPanel(cog), ActiveContractView(cog, 1),
-    EventView(cog, 1),
-]
+groups = {
+    "admin": [AdminPanelView, GeneralView, RoleGroupsView, TierRolesView, HierarchyRolesView, HierarchyRolesView2],
+    "tickets": [TicketSettingsView, TicketExtraSettingsView, WarnSettingsView],
+    "contracts": [ContractSettingsView, ContractFamilyView, ContractPanel, ActiveContractView],
+    "reactions": [ReactionSettingsView, EventView],
+    "voice": [VoiceToolsView],
+}
+selected = sys.argv[1] if len(sys.argv) > 1 else "all"
+classes = sum(groups.values(), []) if selected == "all" else groups[selected]
+views = [cls(cog, 1) if cls in (ActiveContractView, EventView) else cls(cog) for cls in classes]
 for view in views:
-    assert len(view.children) > 0, type(view).__name__
-print(f"Discord view smoke test OK: {len(views)} views")
+    assert view.children, type(view).__name__
+print(f"{selected}: constructed {len(views)} views")
