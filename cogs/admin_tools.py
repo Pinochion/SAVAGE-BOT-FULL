@@ -196,6 +196,14 @@ class AdminTools(commands.Cog):
         set_value(interaction.guild.id, "admin_panel_channel_id", channel.id)
         await interaction.response.send_message(f"Канал панелей установлен: {channel.mention}.", ephemeral=True)
 
+    @app_commands.command(name="afk-voice-channel", description="Настроить голосовой AFK-канал для панели")
+    @app_commands.describe(channel="Голосовой канал, куда перемещать спящих участников")
+    async def afk_voice_channel(self, interaction: discord.Interaction, channel: discord.VoiceChannel):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("Нет доступа.", ephemeral=True)
+        set_value(interaction.guild.id, "afk_voice_channel_id", channel.id)
+        await interaction.response.send_message(f"AFK-канал установлен: {channel.mention}.", ephemeral=True)
+
     @app_commands.command(name="admin-panel-send", description="Опубликовать панели управления и голосовых инструментов")
     async def admin_panel_send(self, interaction: discord.Interaction):
         if not interaction.guild or not is_admin(interaction.user):
@@ -205,6 +213,7 @@ class AdminTools(commands.Cog):
         channel = interaction.guild.get_channel(int(channel_id)) if channel_id else None
         if not isinstance(channel, discord.TextChannel):
             return await interaction.response.send_message("Сначала выполните /admin-panel-channel и выберите текстовый канал.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
         admin_cog = self.bot.get_cog("AdminPanel")
         if admin_cog:
             await channel.send(embed=admin_cog.main_embed(interaction.guild), view=__import__("cogs.admin_panel", fromlist=["AdminPanelView"]).AdminPanelView(admin_cog))
@@ -222,7 +231,7 @@ class AdminTools(commands.Cog):
             ),
             view=VoiceToolsView(self),
         )
-        await interaction.response.send_message(f"Панели опубликованы в {channel.mention}.", ephemeral=True)
+        await interaction.followup.send(f"Панели опубликованы в {channel.mention}.", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(AdminTools(bot))
