@@ -175,7 +175,7 @@ class AdminTools(commands.Cog):
                 try:
                     await member.move_to(destination, reason="Ограниченная проверка включения звука")
                     await asyncio.sleep(1)
-                    if member.voice and member.voice.channel and (member.voice.self_deaf or member.voice.deaf):
+                    if member.voice and member.voice.channel and member.voice.self_deaf:
                         await member.move_to(original_channel, reason="Возврат в исходный голосовой канал")
                 except (discord.Forbidden, discord.HTTPException):
                     break
