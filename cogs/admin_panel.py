@@ -477,6 +477,29 @@ class HierarchyRolesView(BackView):
         self.add_item(RolesSelect("job_heads_role_ids", "Иерархия: Head's", 0, 10, row=2))
         self.add_item(RolesSelect("job_high_role_ids", "Иерархия: High", 0, 10, row=3))
         self.add_back_button()
+        self.add_item(HierarchyNextButton(cog))
+
+class HierarchyNextButton(discord.ui.Button):
+    def __init__(self, cog):
+        self.cog = cog
+        super().__init__(label="Следующие роли ▶", style=discord.ButtonStyle.primary, custom_id="admin:roles:hierarchy2", row=4)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        await interaction.response.edit_message(
+            embed=discord.Embed(title="📋 Должностная иерархия — часть 2", description="Выберите роли иерархии. Настройки сохраняются автоматически.", color=discord.Color.blurple()),
+            view=HierarchyRolesView2(self.cog),
+        )
+
+class HierarchyRolesView2(BackView):
+    def __init__(self, cog):
+        super().__init__(cog)
+        self.add_item(RolesSelect("job_recruiter_role_ids", "Иерархия: Recruiter", 0, 10, row=0))
+        self.add_item(RolesSelect("job_main_role_ids", "Иерархия: main", 0, 10, row=1))
+        self.add_item(RolesSelect("job_savage_role_ids", "Иерархия: savage", 0, 10, row=2))
+        self.add_item(RolesSelect("job_new_savage_role_ids", "Иерархия: new savage", 0, 10, row=3))
+        self.add_back_button()
 
 # =========================================================
 # GENERAL
