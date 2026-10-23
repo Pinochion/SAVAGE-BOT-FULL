@@ -51,13 +51,15 @@ class SavageBot(commands.Bot):
                 traceback.print_exc()
 
         try:
-            # Глобальная синхронизация удаляет устаревшие /reaction и /reaction-vzp.
+            # Публикуем только актуальный глобальный список команд.
+            # Отдельные guild-команды могут оставаться на сервере после переименования,
+            # поэтому очищаем их и НЕ копируем глобальные команды в guild-область.
             global_synced = await self.tree.sync()
             print(f"[COMMANDS] Глобально синхронизировано: {len(global_synced)}")
             if GUILD:
-                self.tree.copy_global_to(guild=GUILD)
-                guild_synced = await self.tree.sync(guild=GUILD)
-                print(f"[COMMANDS] Для сервера {GUILD_ID}: {len(guild_synced)}")
+                self.tree.clear_commands(guild=GUILD)
+                await self.tree.sync(guild=GUILD)
+                print(f"[COMMANDS] Старые локальные команды сервера {GUILD_ID} очищены")
         except Exception:
             print("[COMMAND SYNC ERROR]")
             traceback.print_exc()
