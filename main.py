@@ -66,6 +66,21 @@ class SavageBot(commands.Bot):
 
     async def on_ready(self):
         print(f"[READY] SAVAGE BOT online as {self.user} ({self.user.id})")
+
+        # Удаляем старые команды, которые были зарегистрированы именно для сервера.
+        # Выполняем один раз за запуск; актуальные команды остаются глобальными.
+        if not getattr(self, "_guild_commands_cleaned", False):
+            self._guild_commands_cleaned = True
+            for guild in self.guilds:
+                try:
+                    guild_ref = discord.Object(id=guild.id)
+                    self.tree.clear_commands(guild=guild_ref)
+                    await self.tree.sync(guild=guild_ref)
+                    print(f"[COMMANDS] Старые локальные команды очищены: {guild.name} ({guild.id})")
+                except Exception:
+                    print(f"[COMMAND CLEANUP ERROR] {guild.name} ({guild.id})")
+                    traceback.print_exc()
+
         for cog_name in ("Contracts", "Reactions"):
             cog = self.get_cog(cog_name)
             restore = getattr(cog, "restore_views", None) if cog else None
