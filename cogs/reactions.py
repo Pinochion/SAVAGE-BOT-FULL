@@ -78,13 +78,12 @@ def event_embed(guild, event, config):
         description += f"\n\n**Мест:** {event['slots']}"
     return discord.Embed(title=f"🎮 {title}", description=description, color=discord.Color.blurple())
 
-class ParticipantModal(discord.ui.Modal, title="Управление участником"):
+class ParticipantModal(discord.ui.Modal):
     target = discord.ui.TextInput(label="Упоминание или ID участника", placeholder="@участник или 123456789", max_length=80)
 
     def __init__(self, cog, event_id, add):
-        super().__init__()
+        super().__init__(title="Добавить участника" if add else "Убрать участника")
         self.cog, self.event_id, self.add = cog, event_id, add
-        self.title = "Добавить участника" if add else "Убрать участника"
 
     async def on_submit(self, interaction: discord.Interaction):
         raw = str(self.target.value).strip()
