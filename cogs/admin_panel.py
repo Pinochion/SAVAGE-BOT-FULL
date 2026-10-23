@@ -645,6 +645,21 @@ class TicketExtraSettingsView(BackView):
         self.add_item(TicketQuestionsButton())
         self.add_back_button()
 
+class PublishTicketsButton(discord.ui.Button):
+    def __init__(self, cog):
+        self.cog = cog
+        super().__init__(label="📨 Опубликовать панель тикетов", style=discord.ButtonStyle.success, custom_id="admin:tickets:publish", row=4)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        tickets_cog = self.cog.bot.get_cog("Tickets")
+        command = getattr(tickets_cog, "send_panel", None) if tickets_cog else None
+        callback = getattr(command, "callback", None) if command else None
+        if not callback:
+            return await interaction.response.send_message("❌ Модуль тикетов не загружен.", ephemeral=True)
+        await callback(tickets_cog, interaction)
+
 class TicketSettingsView(BackView):
 
     def __init__(self, cog):
@@ -678,6 +693,7 @@ class TicketSettingsView(BackView):
         self.add_item(TicketStaffSelect())
         self.add_back_button()
         self.add_item(TicketMoreButton(cog))
+        self.add_item(PublishTicketsButton(cog))
 
 
 # =========================================================
