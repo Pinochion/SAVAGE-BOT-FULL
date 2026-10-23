@@ -14,7 +14,7 @@ class General(commands.Cog):
     )
     async def ping(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            "🟢 **S A V A G E BOT работает!**",
+            "◈ **S A V A G E BOT работает!**",
             ephemeral=True
         )
 
