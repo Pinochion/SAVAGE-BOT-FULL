@@ -51,6 +51,8 @@ def role_mentions(guild, config, event_type):
         ids = parse_ids(str(config.get("vzp_role_id") or ""))
     else:
         ids = parse_ids(config.get("family_role_ids", ""))
+        if not ids:
+            ids = parse_ids(config.get("group_family_role_ids", ""))
         if not ids and config.get("family_role_id"):
             ids = parse_ids(str(config["family_role_id"]))
     roles = [guild.get_role(role_id) for role_id in ids]
@@ -154,7 +156,8 @@ class Reactions(commands.Cog):
         if not interaction.guild:
             return await interaction.response.send_message("Команда работает только на сервере.", ephemeral=True)
         config = get_config(interaction.guild.id)
-        channel_id = config.get("reaction_channel_id")
+        channel_id = config.get("reaction_vzp_channel_id") if event_type == "vzp" else config.get("reaction_channel_id")
+        channel_id = channel_id or config.get("reaction_channel_id")
         channel = interaction.guild.get_channel(int(channel_id)) if channel_id else interaction.channel
         if not isinstance(channel, discord.TextChannel):
             return await interaction.response.send_message("Не найден текстовый канал для ивентов.", ephemeral=True)
