@@ -799,6 +799,25 @@ class WarnSettingsView(BackView):
 # CONTRACTS
 # =========================================================
 
+class PublishContractsButton(discord.ui.Button):
+    def __init__(self, cog):
+        self.cog = cog
+        super().__init__(label="📄 Опубликовать панель контрактов", style=discord.ButtonStyle.success, custom_id="admin:contracts:publish", row=3)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        contracts_cog = self.cog.bot.get_cog("Contracts")
+        if not contracts_cog:
+            return await interaction.response.send_message("❌ Модуль контрактов не загружен.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            success = await contracts_cog.publish_panel(interaction.guild)
+        except discord.HTTPException:
+            success = False
+        await interaction.followup.send("✅ Панель контрактов опубликована." if success else "❌ Не удалось опубликовать панель. Проверьте канал и права бота.", ephemeral=True)
+
+
 class ContractSettingsView(BackView):
 
     def __init__(self, cog):
@@ -821,6 +840,7 @@ class ContractSettingsView(BackView):
                 row=1,
             )
         )
+        self.add_item(PublishContractsButton(cog))
         self.add_item(ContractFamilyButton(cog))
         self.add_back_button()
 
