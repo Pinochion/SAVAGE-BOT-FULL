@@ -59,7 +59,6 @@ class VoiceToolsView(discord.ui.View):
             return await interaction.response.send_message("Сначала зайдите в голосовой канал.", ephemeral=True)
         target = interaction.user.voice.channel
         await interaction.response.defer(ephemeral=True, thinking=True)
-        await interaction.response.defer(ephemeral=True, thinking=True)
         moved, failed = 0, 0
         for channel in interaction.guild.voice_channels:
             for member in list(channel.members):
@@ -79,6 +78,7 @@ class VoiceToolsView(discord.ui.View):
         target = interaction.guild.get_channel(int(channel_id)) if channel_id else interaction.guild.afk_channel
         if not isinstance(target, discord.VoiceChannel):
             return await interaction.response.send_message("Сначала выберите AFK-канал в настройках сервера или настройте его в панели.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
         moved, failed = 0, 0
         for channel in interaction.guild.voice_channels:
             if channel.id == target.id:
