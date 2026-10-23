@@ -17,5 +17,6 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements.txt
       - run: python -m compileall -q .
+      - run: python tests/smoke_views.py
       - run: python -c "import cogs.admin_panel, cogs.admin_tools, cogs.contracts, cogs.reactions, cogs.tickets, cogs.warns"
       - run: python -c "import os, tempfile; os.environ['DATA_DIR']=tempfile.mkdtemp(); from utils.config_db import init_config_database, get_config, set_value; init_config_database(); set_value(123, 'group_admin_role_ids', '456,789'); assert get_config(123)['group_admin_role_ids']=='456,789'; print('database migration OK')"
