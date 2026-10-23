@@ -383,7 +383,7 @@ class Warns(commands.Cog):
             if deleted:
 
                 print(
-                    f"🧹 Автоматически снято WARN'ов: "
+                    f"✦ Автоматически снято WARN'ов: "
                     f"{deleted}"
                 )
 
@@ -570,9 +570,7 @@ class Warns(commands.Cog):
 
             count = len(warns)
 
-            color = get_warn_color(
-                count
-            )
+            color=0x0B0B0D
 
             # ------------------------------------------------
             # Основное сообщение
@@ -587,7 +585,7 @@ class Warns(commands.Cog):
                 f"WARN был выдан: "
                 f"{interaction.user.mention}\n"
                 f"WARN'ов: **{count}/3**\n"
-                f"💰 Цена WARN: **{price:,}$**"
+                f"＄ Цена WARN: **{price:,}$**"
             )
 
             if count >= 3:
@@ -601,7 +599,7 @@ class Warns(commands.Cog):
             embed = discord.Embed(
                 title="Варны",
                 description=description,
-                color=color,
+                color=0x0B0B0D,
                 timestamp=datetime.now()
             )
 
@@ -673,12 +671,12 @@ class Warns(commands.Cog):
                             f"{interaction.user.mention} "
                             f"| {interaction.user.display_name}\n"
                             f"WARN'ов: **{count}/3**\n"
-                            f"💰 Цена WARN: **{price:,}$**\n\n"
+                            f"＄ Цена WARN: **{price:,}$**\n\n"
                             f"В связи с накоплением 3/3 WARN'ов "
                             f"нам придётся попрощаться. "
                             f"Удачи!"
                         ),
-                        color=discord.Color.red()
+                        color=0x0B0B0D
                     )
 
                     dm_embed.set_footer(
@@ -788,9 +786,7 @@ class Warns(commands.Cog):
                     f"WARN'ов: **{count}/3**\n"
                     f"Снял: {interaction.user.mention}"
                 ),
-                color=get_warn_color(
-                    count
-                )
+                color=0x0B0B0D
             )
 
             cfg = get_config(
