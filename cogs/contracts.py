@@ -38,6 +38,8 @@ def set_participants(contract_id, ids):
 
 def family_mentions(guild, config):
     ids = parse_ids(config.get("family_role_ids", ""))
+    if not ids:
+        ids = parse_ids(config.get("group_family_role_ids", ""))
     if not ids and config.get("family_role_id"):
         ids = parse_ids(str(config["family_role_id"]))
     roles = [guild.get_role(role_id) for role_id in ids]
