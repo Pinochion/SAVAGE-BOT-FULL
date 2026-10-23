@@ -1093,33 +1093,18 @@ class AdminPanel(commands.Cog):
         )
 
     def reactions_embed(self, guild):
-
         config = get_config(guild.id)
-
-        reaction_roles = safe_parse_ids(
-            config.get("reaction_start_role_ids")
-        )
-
-        vzp_roles = safe_parse_ids(
-            config.get("reaction_vzp_start_role_ids")
-        )
-
+        family_ids = safe_parse_ids(config.get("family_role_ids")) or safe_parse_ids(config.get("group_family_role_ids"))
+        if not family_ids and config.get("family_role_id"):
+            family_ids = safe_parse_ids(str(config.get("family_role_id")))
         return discord.Embed(
-            title="🎬 Настройка Реакций",
+            title="🎬 Настройка ивентов",
             description=(
-                f"**Обычные реакции — канал:**\n"
-                f"{channel_mention(guild, config.get('reaction_channel_id'))}\n\n"
-
-                f"**Обычные реакции — роли запуска:**\n"
-                f"{role_mentions(guild, reaction_roles)}\n\n"
-
-                f"**VZP — канал:**\n"
-                f"{channel_mention(guild, config.get('reaction_vzp_channel_id'))}\n\n"
-
-                f"**VZP — роли запуска:**\n"
-                f"{role_mentions(guild, vzp_roles)}\n\n"
-
-                "Все могут запускать ивенты и записываться. Список участников сортируется по Tier 1 → Tier 2 → Tier 3; без тира участник ниже."
+                f"**Обычный /event — канал:**\n{channel_mention(guild, config.get('reaction_channel_id'))}\n\n"
+                f"**Роли Family, которые упоминаются в /event:**\n{role_mentions(guild, family_ids)}\n\n"
+                f"**/vzp — канал:**\n{channel_mention(guild, config.get('reaction_vzp_channel_id') or config.get('reaction_channel_id'))}\n\n"
+                f"**Роль для упоминания в /vzp:**\n{role_mention(guild, config.get('vzp_role_id'))}\n\n"
+                "Все участники могут создавать ивенты и записываться. Список сортируется Tier 1 → Tier 2 → Tier 3."
             ),
             color=discord.Color.blurple(),
         )
