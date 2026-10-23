@@ -54,7 +54,7 @@ class VoiceToolsView(discord.ui.View):
             return False
         return True
 
-    @discord.ui.button(label="📥 Всех ко мне", style=discord.ButtonStyle.primary, custom_id="admin-tools:move-all")
+    @discord.ui.button(label="↓ Всех ко мне", style=discord.ButtonStyle.secondary, custom_id="admin-tools:move-all")
     async def move_all(self, interaction, button):
         if not interaction.user.voice or not interaction.user.voice.channel:
             return await interaction.response.send_message("Сначала зайдите в голосовой канал.", ephemeral=True)
@@ -72,7 +72,7 @@ class VoiceToolsView(discord.ui.View):
                     failed += 1
         await interaction.followup.send(f"Перемещено: {moved}. Не удалось переместить: {failed}.", ephemeral=True)
 
-    @discord.ui.button(label="😴 Спящих в AFK", style=discord.ButtonStyle.secondary, custom_id="admin-tools:move-deaf")
+    @discord.ui.button(label="☾ Спящих в AFK", style=discord.ButtonStyle.secondary, custom_id="admin-tools:move-deaf")
     async def move_deaf(self, interaction, button):
         config = get_config(interaction.guild.id)
         channel_id = config.get("afk_voice_channel_id")
@@ -94,7 +94,7 @@ class VoiceToolsView(discord.ui.View):
                     failed += 1
         await interaction.followup.send(f"В AFK перемещено: {moved}. Ошибок: {failed}.", ephemeral=True)
 
-    @discord.ui.button(label="🔊 Размутить всех", style=discord.ButtonStyle.secondary, custom_id="admin-tools:unmute-all")
+    @discord.ui.button(label="♬ Размутить всех", style=discord.ButtonStyle.secondary, custom_id="admin-tools:unmute-all")
     async def unmute_all(self, interaction, button):
         members = []
         for channel in interaction.guild.voice_channels:
@@ -106,7 +106,7 @@ class VoiceToolsView(discord.ui.View):
         await interaction.response.send_message(f"Начинаю ограниченную обработку {len(members)} участников. Для каждого максимум 8 перемещений; остановка при включении звука.", ephemeral=True)
         self.cog.bot.loop.create_task(self.cog.nudge_many(members))
 
-    @discord.ui.button(label="✉️ Рассылка в ЛС", style=discord.ButtonStyle.success, custom_id="admin-tools:broadcast")
+    @discord.ui.button(label="✉️ Рассылка в ЛС", style=discord.ButtonStyle.secondary, custom_id="admin-tools:broadcast")
     async def broadcast(self, interaction, button):
         await interaction.response.send_modal(BroadcastModal(self.cog))
 
@@ -219,7 +219,7 @@ class AdminTools(commands.Cog):
             await channel.send(embed=admin_cog.main_embed(interaction.guild), view=__import__("cogs.admin_panel", fromlist=["AdminPanelView"]).AdminPanelView(admin_cog))
         await channel.send(
             embed=discord.Embed(
-                title="🛠️ АДМИН ПАНЕЛЬ",
+                title="⚙ АДМИН ПАНЕЛЬ",
                 description=(
                     "**Всех ко мне** — переместить участников из других голосовых каналов в ваш текущий канал.\n"
                     "**Спящих в AFK** — переместить оглушённых/самооглушённых участников в AFK-канал.\n"
@@ -227,7 +227,7 @@ class AdminTools(commands.Cog):
                     "**Размутить всех** — то же самое для всех подходящих участников, максимум 8 циклов на человека.\n"
                     "**Рассылка в ЛС** — отправить текст всем участникам с ролями семейной иерархии."
                 ),
-                color=discord.Color.dark_teal(),
+                color=0x0B0B0D,
             ),
             view=VoiceToolsView(self),
         )
