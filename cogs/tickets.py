@@ -41,12 +41,8 @@ DEFAULT_QUESTIONS = {
 # ============================================================
 
 def get_connection():
-    os.makedirs("database", exist_ok=True)
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-
-    return conn
+    from utils.config_db import get_connection as shared_get_connection
+    return shared_get_connection()
 
 
 def init_database():
