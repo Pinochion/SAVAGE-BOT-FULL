@@ -37,7 +37,7 @@ class MoveMemberSelect(discord.ui.UserSelect):
             return await interaction.response.send_message("Участник не найден.", ephemeral=True)
         if not member.voice or not member.voice.channel:
             return await interaction.response.send_message("Участник не находится в голосовом канале.", ephemeral=True)
-        if not member.voice.self_deaf and not member.voice.deaf:
+        if not member.voice.self_deaf:
             return await interaction.response.send_message("У участника не выключен звук на стороне Discord.", ephemeral=True)
         await interaction.response.send_message(f"Запускаю ограниченную попытку вернуть звук для {member.mention}. Процесс остановится, когда участник включит звук или покинет голосовой канал.", ephemeral=True)
         self.cog.bot.loop.create_task(self.cog.nudge_unmute(member))
@@ -85,7 +85,7 @@ class VoiceToolsView(discord.ui.View):
             if channel.id == target.id:
                 continue
             for member in list(channel.members):
-                if member.bot or not member.voice or not (member.voice.self_deaf or member.voice.deaf):
+                if member.bot or not member.voice or not member.voice.self_deaf:
                     continue
                 try:
                     await member.move_to(target, reason=f"Перемещение в AFK: {interaction.user}")
@@ -99,7 +99,7 @@ class VoiceToolsView(discord.ui.View):
         members = []
         for channel in interaction.guild.voice_channels:
             for member in channel.members:
-                if not member.bot and member.voice and (member.voice.self_deaf or member.voice.deaf):
+                if not member.bot and member.voice and member.voice.self_deaf:
                     members.append(member)
         if not members:
             return await interaction.response.send_message("Нет участников с выключенным звуком.", ephemeral=True)
@@ -169,7 +169,7 @@ class AdminTools(commands.Cog):
                 await asyncio.sleep(3)
                 if not member.voice or not member.voice.channel:
                     break
-                if not (member.voice.self_deaf or member.voice.deaf):
+                if not member.voice.self_deaf:
                     break
                 destination = alternates[attempts % len(alternates)]
                 try:
