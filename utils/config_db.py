@@ -59,6 +59,8 @@ def init_config_database():
         reaction_vzp_channel_id INTEGER,
         reaction_start_role_ids TEXT NOT NULL DEFAULT '',
         reaction_vzp_start_role_ids TEXT NOT NULL DEFAULT '',
+        reaction_access_role_id INTEGER,
+        warn_access_role_id INTEGER,
         warn_channel_id INTEGER
     );
     CREATE TABLE IF NOT EXISTS contracts (
@@ -112,6 +114,8 @@ def init_config_database():
         "contract_role_id": "INTEGER",
         "reaction_vzp_channel_id": "INTEGER",
         "reaction_vzp_start_role_ids": "TEXT NOT NULL DEFAULT ''",
+        "reaction_access_role_id": "INTEGER",
+        "warn_access_role_id": "INTEGER",
     }
     for name, definition in additions.items():
         if name not in existing:
@@ -161,7 +165,7 @@ def set_value(guild_id: int, key: str, value):
         "admin_panel_channel_id", "family_role_id", "contract_channel_id", "contract_role_id",
         "contract_start_role_ids", "contract_join_role_ids", "reaction_channel_id",
         "reaction_vzp_channel_id", "reaction_start_role_ids", "reaction_vzp_start_role_ids",
-        "warn_channel_id"
+        "reaction_access_role_id", "warn_access_role_id", "warn_channel_id"
     }
     if key not in allowed:
         raise ValueError(f"Unknown config key: {key}")
