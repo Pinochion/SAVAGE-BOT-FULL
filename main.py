@@ -25,10 +25,17 @@ class SavageBot(commands.Bot):
                 print(f'❌ Ошибка {ext}: {type(e).__name__}: {e}'); traceback.print_exc()
         if GUILD:
             try:
+                # Copy current commands to this server and sync them first.
                 self.tree.copy_global_to(guild=GUILD)
                 synced=await self.tree.sync(guild=GUILD)
-                print(f'✅ Синхронизировано команд: {len(synced)}')
-            except Exception as e: print(f'❌ Ошибка синхронизации: {e}')
+                print(f'✅ Синхронизировано команд сервера: {len(synced)}')
+
+                # Remove stale globally registered commands (including old /reaction commands).
+                self.tree.clear_commands(guild=None)
+                await self.tree.sync()
+                print('✅ Устаревшие глобальные команды очищены')
+            except Exception as e:
+                print(f'❌ Ошибка синхронизации: {e}')
     async def on_ready(self):
         print(f'🤖 S A V A G E online: {self.user} ({self.user.id})')
         for name in ('contracts','reactions'):
