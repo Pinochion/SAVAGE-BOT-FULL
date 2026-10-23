@@ -14,6 +14,9 @@ from utils.permissions import is_admin
 from cogs.tickets import (
     update_setting as ticket_update_setting,
     get_settings as get_ticket_settings,
+    get_questions as get_ticket_questions,
+    add_question as add_ticket_question,
+    delete_question as delete_ticket_question,
 )
 
 from cogs.warns import (
@@ -587,10 +590,59 @@ class TicketMoreButton(discord.ui.Button):
             view=TicketExtraSettingsView(self.cog),
         )
 
+class TicketQuestionModal(discord.ui.Modal, title="Настройка вопроса тикета"):
+    number = discord.ui.TextInput(label="Номер вопроса (1–5)", placeholder="1", max_length=1)
+    question = discord.ui.TextInput(label="Текст вопроса (пусто — удалить)", style=discord.TextStyle.paragraph, required=False, max_length=300, placeholder="Введите новый текст вопроса")
+
+    def __init__(self):
+        super().__init__()
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        try:
+            number = int(str(self.number.value).strip())
+            if number < 1 or number > 5:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message("Номер вопроса должен быть от 1 до 5.", ephemeral=True)
+        question = str(self.question.value).strip()
+        if question:
+            add_ticket_question(interaction.guild.id, number, question)
+            result = f"Вопрос №{number} сохранён."
+        else:
+            delete_ticket_question(interaction.guild.id, number)
+            result = f"Вопрос №{number} удалён. Если вопросов не осталось, добавьте новый текст."
+        await interaction.response.send_message(result, ephemeral=True)
+
+class TicketQuestionsButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="❓ Настроить вопросы", style=discord.ButtonStyle.primary, custom_id="admin:tickets:questions", row=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.guild or not is_admin(interaction.user):
+            return await interaction.response.send_message("❌ Нет доступа.", ephemeral=True)
+        questions = get_ticket_questions(interaction.guild.id)
+        text = "\n".join(f"**{row['question_number']}.** {row['question']}" for row in questions) or "Вопросы не настроены."
+        await interaction.response.send_message(
+            embed=discord.Embed(title="❓ Вопросы заявки", description=text + "\n\nНажмите кнопку, чтобы изменить вопрос по номеру 1–5. Пустой текст удаляет вопрос.", color=discord.Color.blurple()),
+            view=TicketQuestionsView(),
+            ephemeral=True,
+        )
+
+class TicketQuestionsView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=180)
+
+    @discord.ui.button(label="Изменить / удалить вопрос", style=discord.ButtonStyle.secondary)
+    async def edit_question(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(TicketQuestionModal())
+
 class TicketExtraSettingsView(BackView):
     def __init__(self, cog):
         super().__init__(cog)
         self.add_item(TicketMemberRoleSelect())
+        self.add_item(TicketQuestionsButton())
         self.add_back_button()
 
 class TicketSettingsView(BackView):
