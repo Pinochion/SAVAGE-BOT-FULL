@@ -813,20 +813,12 @@ class ContractSettingsView(BackView):
         )
 
         self.add_item(
-            OneRoleSelect(
-                "contract_role_id",
-                "Роль контракта",
-                row=1,
-            )
-        )
-
-        self.add_item(
             RolesSelect(
                 "family_role_ids",
                 "Роли Family для упоминания",
                 0,
                 10,
-                row=2,
+                row=1,
             )
         )
         self.add_item(ContractFamilyButton(cog))
@@ -1069,31 +1061,17 @@ class AdminPanel(commands.Cog):
 
         config = get_config(guild.id)
 
-        start_roles = safe_parse_ids(
-            config.get("contract_start_role_ids")
-        )
-
-        join_roles = safe_parse_ids(
-            config.get("contract_join_role_ids")
-        )
-
+        family_ids = safe_parse_ids(config.get("family_role_ids")) or safe_parse_ids(config.get("group_family_role_ids"))
+        if not family_ids and config.get("family_role_id"):
+            family_ids = safe_parse_ids(str(config.get("family_role_id")))
         return discord.Embed(
             title="📄 Настройки контрактов",
             description=(
                 f"**Канал контрактов:**\n"
                 f"{channel_mention(guild, config.get('contract_channel_id'))}\n\n"
-
-                f"**Роль контракта:**\n"
-                f"{role_mention(guild, config.get('contract_role_id'))}\n\n"
-
-                f"**Кто может запускать:**\n"
-                f"{role_mentions(guild, start_roles)}\n\n"
-
-                f"**Кто может участвовать:**\n"
-                f"{role_mentions(guild, join_roles)}\n\n"
-
-                f"**Основная роль / семья:**\n"
-                f"{role_mention(guild, config.get('family_role_id'))}"
+                f"**Роли Family для упоминания:**\n"
+                f"{role_mentions(guild, family_ids)}\n\n"
+                "Все участники могут запускать набор и записываться. Длительность набора — 15 минут."
             ),
             color=discord.Color.blurple(),
         )
