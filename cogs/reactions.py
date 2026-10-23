@@ -409,7 +409,7 @@ def build_list_embed(guild, event):
     if not main_lines:
         main_lines.append("Никого нет.")
 
-    description = f"**Время забива:** {event['event_time']}\n"
+    description = f"**Время:** {event['event_time']}\n"
     if str(event.get("reaction_type", "default")).lower() == "vzp":
         description += f"**Начало:** {start_time(event['event_time'], 'vzp')}\n"
     description += "\n**Основной состав:**\n" + "\n".join(main_lines)
@@ -453,7 +453,7 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
     )
 
     time = discord.ui.TextInput(
-        label="Время забива",
+        label="🕒 Изменить время",
         placeholder="21:00",
         max_length=5,
         min_length=4,
