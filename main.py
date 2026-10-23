@@ -38,6 +38,7 @@ EXTENSIONS = (
     "cogs.admin_panel",
     "cogs.contracts",
     "cogs.reactions",
+    "cogs.voice_admin",
 )
 
 class SavageBot(commands.Bot):
