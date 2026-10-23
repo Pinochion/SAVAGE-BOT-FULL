@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timedelta
 
 from utils.config_db import get_config
-from utils.permissions import is_recruiter
+from utils.permissions import has_role_or_higher
 
 
 # ============================================================
@@ -302,35 +302,9 @@ def remove_expired_warns():
 #                         STAFF CHECK
 # ============================================================
 
-def is_warn_staff(
-    member: discord.Member
-):
-
-    # Администратор и роли рекрутов из общей панели
-    # всегда могут управлять WARN.
-    if (
-        member.guild_permissions.administrator
-        or is_recruiter(member)
-    ):
-        return True
-
-    role_ids = get_warn_staff_roles(
-        member.guild.id
-    )
-
-    if not role_ids:
-        return False
-
-    member_role_ids = {
-        role.id
-        for role in member.roles
-    }
-
-    return bool(
-        member_role_ids.intersection(
-            set(role_ids)
-        )
-    )
+def is_warn_staff(member: discord.Member):
+    cfg = get_config(member.guild.id)
+    return has_role_or_higher(member, cfg.get("warn_access_role_id"))
 
 
 # ============================================================

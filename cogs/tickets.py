@@ -7,6 +7,9 @@ import os
 import re
 from datetime import datetime
 
+from utils.config_db import get_config
+from utils.permissions import has_group_access
+
 
 # ============================================================
 #                 S A V A G E • TICKETS
@@ -128,19 +131,14 @@ def ensure_guild_settings(guild_id: int):
             None
         ))
 
-    for number, question in DEFAULT_QUESTIONS.items():
+    cursor.execute(
+        "SELECT 1 FROM ticket_questions WHERE guild_id = ? LIMIT 1",
+        (guild_id,)
+    )
+    has_questions = cursor.fetchone() is not None
 
-        cursor.execute("""
-            SELECT question
-            FROM ticket_questions
-            WHERE guild_id = ?
-            AND question_number = ?
-        """, (
-            guild_id,
-            number
-        ))
-
-        if cursor.fetchone() is None:
+    if not has_questions:
+        for number, question in DEFAULT_QUESTIONS.items():
             cursor.execute("""
                 INSERT INTO ticket_questions (
                     guild_id,
@@ -148,11 +146,7 @@ def ensure_guild_settings(guild_id: int):
                     question
                 )
                 VALUES (?, ?, ?)
-            """, (
-                guild_id,
-                number,
-                question
-            ))
+            """, (guild_id, number, question))
 
     conn.commit()
     conn.close()
@@ -321,7 +315,7 @@ def get_questions(guild_id: int):
     cursor.execute("""
         SELECT question_number, question
         FROM ticket_questions
-        WHERE guild_id = ?
+        WHERE guild_id = ? AND question != ''
         ORDER BY question_number
     """, (
         guild_id,
@@ -357,7 +351,7 @@ def get_question(
 
     conn.close()
 
-    if result:
+    if result and result["question"]:
         return result["question"]
 
     return None
@@ -397,14 +391,12 @@ def delete_question(
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Keep an empty row as a deletion marker; otherwise defaults would be restored.
     cursor.execute("""
-        DELETE FROM ticket_questions
-        WHERE guild_id = ?
-        AND question_number = ?
-    """, (
-        guild_id,
-        number
-    ))
+        INSERT OR REPLACE INTO ticket_questions (
+            guild_id, question_number, question
+        ) VALUES (?, ?, '')
+    """, (guild_id, number))
 
     conn.commit()
     conn.close()
@@ -503,22 +495,24 @@ def is_staff(
     member: discord.Member,
     staff_role_ids
 ):
+    cfg = get_config(member.guild.id)
+    group_keys = (
+        "group_admin_role_ids",
+        "group_moderator_role_ids",
+        "group_checked_role_ids",
+        "group_family_role_ids",
+    )
+    # When the new access groups are configured, they are the source of truth.
+    if any(cfg.get(key) for key in group_keys):
+        return has_group_access(member, "tickets")
+
+    # Backwards compatibility for servers that have not configured groups yet.
     if member.guild_permissions.administrator:
         return True
-
     if not staff_role_ids:
         return False
-
-    member_role_ids = {
-        role.id
-        for role in member.roles
-    }
-
-    return bool(
-        member_role_ids.intersection(
-            set(staff_role_ids)
-        )
-    )
+    member_role_ids = {role.id for role in member.roles}
+    return bool(member_role_ids.intersection(set(staff_role_ids)))
 
 
 # ============================================================

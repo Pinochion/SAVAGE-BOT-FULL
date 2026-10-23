@@ -12,6 +12,7 @@ from utils.config_db import (
 )
 from utils.permissions import (
     can_start_reaction,
+    has_group_access,
     is_admin,
     is_recruiter,
 )
@@ -287,17 +288,19 @@ def get_role_id(cfg, *keys):
 
 
 def get_reaction_roles(guild):
+    """Возвращает роли Family для упоминания в обычных реакциях."""
     cfg = get_config(guild.id)
     roles = []
 
-    for role_id in (
-        get_role_id(cfg, "main_role_id", "main_role_ids"),
-        get_role_id(cfg, "default_role_id", "default_role_ids"),
-        get_role_id(cfg, "academy_role_id", "academy_role_ids"),
-    ):
-        if not role_id:
-            continue
+    # Основной источник — все роли группы Family в общих настройках.
+    role_ids = csv_ids(cfg.get("group_family_role_ids"))
 
+    # Поддержка старой конфигурации, где могла быть сохранена одна роль.
+    legacy_role_id = get_role_id(cfg, "group_family_role_id", "family_role_id")
+    if legacy_role_id:
+        role_ids.append(legacy_role_id)
+
+    for role_id in dict.fromkeys(role_ids):
         role = guild.get_role(role_id)
         if role and role not in roles:
             roles.append(role)
@@ -344,16 +347,12 @@ def can_start_vzp(member):
     if not isinstance(member, discord.Member):
         return False
 
-    if is_admin(member):
-        return True
-
-    cfg = get_config(member.guild.id)
-    allowed = set(csv_ids(cfg.get("reaction_vzp_start_role_ids")))
-    return bool(allowed.intersection(role.id for role in member.roles))
+    # Для обычного набора и VZP используется одна роль доступа из настроек реакций.
+    return can_start_reaction(member)
 
 
 def can_manage_event(member, event):
-    return is_admin(member) or is_recruiter(member)
+    return has_group_access(member, 'reactions')
 
 
 # =========================================================
@@ -376,7 +375,8 @@ def build_embed(guild, event):
 
     collected = f"{len(participants)}/∞" if slots <= 0 else f"{len(participants)}/{slots}"
 
-    description = f"**Время забива:** {event['event_time']}\n"
+    label = "Время" if str(event.get("reaction_type", "default")).lower() != "vzp" else "Время забива"
+    description = f"**{label}:** {event['event_time']}\n"
     if str(event.get("reaction_type", "default")).lower() == "vzp":
         description += f"**Начало:** {start_time(event['event_time'], 'vzp')}\n"
     description += f"**Собрано:** {collected}\n\n" + "\n".join(lines)
@@ -410,7 +410,8 @@ def build_list_embed(guild, event):
     if not main_lines:
         main_lines.append("Никого нет.")
 
-    description = f"**Время забива:** {event['event_time']}\n"
+    label = "Время" if str(event.get("reaction_type", "default")).lower() != "vzp" else "Время забива"
+    description = f"**{label}:** {event['event_time']}\n"
     if str(event.get("reaction_type", "default")).lower() == "vzp":
         description += f"**Начало:** {start_time(event['event_time'], 'vzp')}\n"
     description += "\n**Основной состав:**\n" + "\n".join(main_lines)
@@ -454,7 +455,7 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
     )
 
     time = discord.ui.TextInput(
-        label="Время забива",
+        label="Время",
         placeholder="21:00",
         max_length=5,
         min_length=4,
@@ -563,7 +564,7 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
                 role_mentions = get_reaction_mentions(interaction.guild)
                 if not role_mentions:
                     return await interaction.response.send_message(
-                        "❌ Роли MAIN / DEFAULT / ACADEMY не настроены.",
+                        "❌ В админ-панели не настроены роли группы Family.",
                         ephemeral=True,
                     )
 
@@ -1206,7 +1207,7 @@ class Reactions(commands.Cog):
     # =====================================================
 
     async def tag_roles(self, interaction, event_id):
-        if not is_recruiter(interaction.user):
+        if not has_group_access(interaction.user, 'reactions'):
             return await interaction.response.send_message(
                 "❌ Только рекрутеры могут тегать роли.",
                 ephemeral=True,
@@ -1232,7 +1233,7 @@ class Reactions(commands.Cog):
             role_mentions = get_reaction_mentions(interaction.guild)
             if not role_mentions:
                 return await interaction.response.send_message(
-                    "❌ Роли MAIN / DEFAULT / ACADEMY не настроены.",
+                    "❌ В настройках общих ролей не настроены роли Family.",
                     ephemeral=True,
                 )
 
@@ -1440,7 +1441,7 @@ class Reactions(commands.Cog):
                 ephemeral=True,
             )
 
-        if not is_admin(interaction.user):
+        if not has_group_access(interaction.user, 'reactions'):
             return await interaction.response.send_message(
                 "❌ Только администратор может отменить результат.",
                 ephemeral=True,
@@ -1453,95 +1454,6 @@ class Reactions(commands.Cog):
             "↩️ Результат отменён. Список восстановлен.",
             ephemeral=True,
         )
-
-    # =====================================================
-    # COMMANDS
-    # =====================================================
-
-    @app_commands.command(
-        name="reaction",
-        description="Запустить обычный набор на контент",
-    )
-    async def reaction(self, interaction):
-        try:
-            if not interaction.guild:
-                return await interaction.response.send_message(
-                    "❌ Эта команда работает только на сервере.",
-                    ephemeral=True,
-                )
-
-            if not can_start_reaction(interaction.user):
-                return await interaction.response.send_message(
-                    "❌ У вас нет права запускать обычный набор.",
-                    ephemeral=True,
-                )
-
-            await interaction.response.send_modal(
-                ReactionModal(self, "default")
-            )
-
-        except Exception as error:
-            print(
-                "[SAVAGE][REACTIONS] /reaction: "
-                f"{type(error).__name__}: {error}"
-            )
-
-            try:
-                if interaction.response.is_done():
-                    await interaction.followup.send(
-                        "❌ Не удалось открыть форму.",
-                        ephemeral=True,
-                    )
-                else:
-                    await interaction.response.send_message(
-                        "❌ Не удалось открыть форму.",
-                        ephemeral=True,
-                    )
-            except Exception:
-                pass
-
-    @app_commands.command(
-        name="reaction-vzp",
-        description="Запустить набор VZP",
-    )
-    async def reaction_vzp(self, interaction):
-        try:
-            if not interaction.guild:
-                return await interaction.response.send_message(
-                    "❌ Эта команда работает только на сервере.",
-                    ephemeral=True,
-                )
-
-            if not can_start_vzp(interaction.user):
-                return await interaction.response.send_message(
-                    "❌ У вас нет права запускать VZP.",
-                    ephemeral=True,
-                )
-
-            await interaction.response.send_modal(
-                ReactionModal(self, "vzp")
-            )
-
-        except Exception as error:
-            print(
-                "[SAVAGE][REACTIONS] /reaction-vzp: "
-                f"{type(error).__name__}: {error}"
-            )
-
-            try:
-                if interaction.response.is_done():
-                    await interaction.followup.send(
-                        "❌ Не удалось открыть форму VZP.",
-                        ephemeral=True,
-                    )
-                else:
-                    await interaction.response.send_message(
-                        "❌ Не удалось открыть форму VZP.",
-                        ephemeral=True,
-                    )
-            except Exception:
-                pass
-
 
 # =========================================================
 # SETUP
