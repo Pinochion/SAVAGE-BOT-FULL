@@ -208,8 +208,7 @@ class WarnSettings(SimpleSettings):
     def __init__(self,cog):
         super().__init__(cog)
         self.add_item(ChannelSetting('warn_channel_id','Канал WARN',row=0))
-        self.add_item(PermissionSetting('warns',1,scope='warnsettings'))
-        self.add_item(WarnRoleSetting('warn_staff','Роли сотрудников WARN',multi=True,row=2))
+        self.add_item(RoleSetting('warn_access_role_id','Право доступа к WARN: роль и выше',row=1))
         self.add_back('manage')
 class WarnRoleSetting(RoleSetting):
     async def callback(self,i):
@@ -225,7 +224,11 @@ class ContractSettings(SimpleSettings):
         super().__init__(cog); self.add_item(ChannelSetting('contract_channel_id','Канал контрактов',row=0)); self.add_item(RoleSetting('contract_role_id','Роль семьи для упоминания',row=1)); self.add_item(PermissionSetting('contracts_start',row=2,scope='contractsettings')); self.add_item(PermissionSetting('contracts_join',row=3,scope='contractsettings'));  self.add_back('manage')
 class ReactionSettings(SimpleSettings):
     def __init__(self,cog):
-        super().__init__(cog); self.add_item(ChannelSetting('reaction_channel_id','Канал обычных реакций',row=0)); self.add_item(ChannelSetting('reaction_vzp_channel_id','Канал VZP',row=1)); self.add_item(PermissionSetting('reactions',row=2,scope='reactionsettings')); self.add_back('manage')
+        super().__init__(cog)
+        self.add_item(ChannelSetting('reaction_channel_id','Канал обычных реакций',row=0))
+        self.add_item(ChannelSetting('reaction_vzp_channel_id','Канал VZP',row=1))
+        self.add_item(RoleSetting('reaction_access_role_id','Право запуска наборов: роль и выше',row=2))
+        self.add_back('manage')
 
 
 class BroadcastModal(discord.ui.Modal,title='Рассылка участникам семьи'):
