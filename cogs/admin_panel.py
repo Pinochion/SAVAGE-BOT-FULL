@@ -707,28 +707,14 @@ class ContractSettingsView(BackView):
 
         self.add_item(
             RolesSelect(
-                "contract_start_role_ids",
-                "Кто может запускать контракт",
+                "family_role_ids",
+                "Роли Family для упоминания",
                 0,
                 10,
                 row=2,
             )
         )
-
-        self.add_item(
-            RolesSelect(
-                "contract_join_role_ids",
-                "Кто может записываться",
-                0,
-                10,
-                row=3,
-            )
-        )
-
-        self.add_item(
-            ContractFamilyButton(cog)
-        )
-
+        self.add_item(ContractFamilyButton(cog))
         self.add_back_button()
 
 
@@ -803,33 +789,19 @@ class ReactionSettingsView(BackView):
         )
 
         self.add_item(
-            RolesSelect(
-                "reaction_start_role_ids",
-                "Роли запуска обычных реакций",
-                0,
-                10,
-                row=1,
-            )
-        )
-
-        self.add_item(
             ChannelSelect(
                 "reaction_vzp_channel_id",
                 "Канал VZP",
+                row=1,
+            )
+        )
+        self.add_item(
+            OneRoleSelect(
+                "vzp_role_id",
+                "Роль для упоминания в VZP",
                 row=2,
             )
         )
-
-        self.add_item(
-            RolesSelect(
-                "reaction_vzp_start_role_ids",
-                "Роли запуска VZP",
-                0,
-                10,
-                row=3,
-            )
-        )
-
         self.add_back_button()
 
 
