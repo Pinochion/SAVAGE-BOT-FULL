@@ -7,6 +7,9 @@ import os
 import re
 from datetime import datetime
 
+from utils.config_db import get_config
+from utils.permissions import has_group_access
+
 
 # ============================================================
 #                 S A V A G E • TICKETS
@@ -20,12 +23,6 @@ PANEL_IMAGE_URL = (
     "https://i.postimg.cc/T2q43j4M/"
     "Chat-GPT-Image-19-avg-2026-g-15-20-33.png"
 )
-
-# Роль, которая выдаётся кандидату при нажатии «Обзвон»
-CALL_ROLE_ID = 1498024705989542011
-
-# Канал, в который всегда вызывается кандидат
-CALL_CHANNEL_ID = 1498022964610863255
 
 DEFAULT_QUESTIONS = {
     1: "Ваш никнейм",
@@ -60,7 +57,9 @@ def init_database():
             member_role_id INTEGER,
             open_category_id INTEGER,
             closed_category_id INTEGER,
-            panel_channel_id INTEGER
+            panel_channel_id INTEGER,
+            call_role_id INTEGER,
+            call_channel_id INTEGER
         )
     """)
 
@@ -84,6 +83,11 @@ def init_database():
             ALTER TABLE ticket_settings
             ADD COLUMN panel_channel_id INTEGER
         """)
+
+    if "call_role_id" not in columns:
+        cursor.execute("ALTER TABLE ticket_settings ADD COLUMN call_role_id INTEGER")
+    if "call_channel_id" not in columns:
+        cursor.execute("ALTER TABLE ticket_settings ADD COLUMN call_channel_id INTEGER")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ticket_questions (
@@ -128,19 +132,14 @@ def ensure_guild_settings(guild_id: int):
             None
         ))
 
-    for number, question in DEFAULT_QUESTIONS.items():
+    cursor.execute(
+        "SELECT 1 FROM ticket_questions WHERE guild_id = ? LIMIT 1",
+        (guild_id,)
+    )
+    has_questions = cursor.fetchone() is not None
 
-        cursor.execute("""
-            SELECT question
-            FROM ticket_questions
-            WHERE guild_id = ?
-            AND question_number = ?
-        """, (
-            guild_id,
-            number
-        ))
-
-        if cursor.fetchone() is None:
+    if not has_questions:
+        for number, question in DEFAULT_QUESTIONS.items():
             cursor.execute("""
                 INSERT INTO ticket_questions (
                     guild_id,
@@ -148,11 +147,7 @@ def ensure_guild_settings(guild_id: int):
                     question
                 )
                 VALUES (?, ?, ?)
-            """, (
-                guild_id,
-                number,
-                question
-            ))
+            """, (guild_id, number, question))
 
     conn.commit()
     conn.close()
@@ -188,6 +183,8 @@ def update_setting(
         "open_category_id",
         "closed_category_id",
         "panel_channel_id",
+        "call_role_id",
+        "call_channel_id",
     }
 
     if column not in allowed_columns:
@@ -321,7 +318,7 @@ def get_questions(guild_id: int):
     cursor.execute("""
         SELECT question_number, question
         FROM ticket_questions
-        WHERE guild_id = ?
+        WHERE guild_id = ? AND question != ''
         ORDER BY question_number
     """, (
         guild_id,
@@ -357,7 +354,7 @@ def get_question(
 
     conn.close()
 
-    if result:
+    if result and result["question"]:
         return result["question"]
 
     return None
@@ -397,14 +394,12 @@ def delete_question(
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Keep an empty row as a deletion marker; otherwise defaults would be restored.
     cursor.execute("""
-        DELETE FROM ticket_questions
-        WHERE guild_id = ?
-        AND question_number = ?
-    """, (
-        guild_id,
-        number
-    ))
+        INSERT OR REPLACE INTO ticket_questions (
+            guild_id, question_number, question
+        ) VALUES (?, ?, '')
+    """, (guild_id, number))
 
     conn.commit()
     conn.close()
@@ -503,22 +498,24 @@ def is_staff(
     member: discord.Member,
     staff_role_ids
 ):
+    cfg = get_config(member.guild.id)
+    group_keys = (
+        "group_admin_role_ids",
+        "group_moderator_role_ids",
+        "group_checked_role_ids",
+        "group_family_role_ids",
+    )
+    # When the new access groups are configured, they are the source of truth.
+    if any(cfg.get(key) for key in group_keys):
+        return has_group_access(member, "tickets")
+
+    # Backwards compatibility for servers that have not configured groups yet.
     if member.guild_permissions.administrator:
         return True
-
     if not staff_role_ids:
         return False
-
-    member_role_ids = {
-        role.id
-        for role in member.roles
-    }
-
-    return bool(
-        member_role_ids.intersection(
-            set(staff_role_ids)
-        )
-    )
+    member_role_ids = {role.id for role in member.roles}
+    return bool(member_role_ids.intersection(set(staff_role_ids)))
 
 
 # ============================================================
@@ -1718,18 +1715,17 @@ class Tickets(commands.Cog):
             return
 
         # ----------------------------------------------------
-        # Получаем фиксированную роль обзвона
+        # Получаем роль обзвона из настроек сервера
         # ----------------------------------------------------
 
-        call_role = guild.get_role(
-            CALL_ROLE_ID
-        )
+        ticket_settings = get_settings(guild.id)
+        call_role_id = ticket_settings["call_role_id"]
+        call_role = guild.get_role(int(call_role_id)) if call_role_id else None
 
         if not call_role:
 
             await interaction.response.send_message(
-                "❌ Роль для обзвона не найдена.\n"
-                f"ID роли: `{CALL_ROLE_ID}`",
+                "❌ Роль для обзвона не настроена. Выберите её в админ-панели → Тикеты → дополнительные настройки.",
                 ephemeral=True
             )
 
@@ -1776,26 +1772,24 @@ class Tickets(commands.Cog):
                 return
 
         # ----------------------------------------------------
-        # Получаем фиксированный канал обзвона
+        # Получаем голосовой канал обзвона из настроек сервера
         # ----------------------------------------------------
 
-        call_channel = guild.get_channel(
-            CALL_CHANNEL_ID
-        )
+        call_channel_id = ticket_settings["call_channel_id"]
+        call_channel = guild.get_channel(int(call_channel_id)) if call_channel_id else None
 
         if not call_channel:
 
             try:
 
                 call_channel = await guild.fetch_channel(
-                    CALL_CHANNEL_ID
+                    int(call_channel_id)
                 )
 
             except discord.NotFound:
 
                 await interaction.response.send_message(
-                    "❌ Канал обзвона не найден.\n"
-                    f"ID канала: `{CALL_CHANNEL_ID}`",
+                    "❌ Голосовой канал обзвона не настроен или не найден. Выберите его в админ-панели → Тикеты → дополнительные настройки.",
                     ephemeral=True
                 )
 
