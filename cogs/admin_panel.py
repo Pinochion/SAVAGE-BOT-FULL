@@ -245,6 +245,24 @@ class TicketMemberRoleSetting(discord.ui.RoleSelect):
         ticket_update_setting(i.guild.id,'member_role_id',role_id)
         await i.response.send_message('✅ Роль принятого участника сохранена.',ephemeral=True)
 
+class TicketCallRoleSetting(discord.ui.RoleSelect):
+    def __init__(self):
+        super().__init__(placeholder="Роль, выдаваемая при обзвоне",min_values=0,max_values=1,row=1,custom_id="savage:ticket:call-role")
+    async def callback(self,i):
+        if not i.guild or not has_group_access(i.user,"settings"):
+            return await i.response.send_message("❌ Нет доступа.",ephemeral=True)
+        ticket_update_setting(i.guild.id,"call_role_id",self.values[0].id if self.values else None)
+        await i.response.send_message("✅ Роль обзвона сохранена.",ephemeral=True)
+
+class TicketCallChannelSetting(discord.ui.ChannelSelect):
+    def __init__(self):
+        super().__init__(placeholder="Голосовой канал обзвона",min_values=0,max_values=1,channel_types=[discord.ChannelType.voice],row=2,custom_id="savage:ticket:call-channel")
+    async def callback(self,i):
+        if not i.guild or not has_group_access(i.user,"settings"):
+            return await i.response.send_message("❌ Нет доступа.",ephemeral=True)
+        ticket_update_setting(i.guild.id,"call_channel_id",self.values[0].id if self.values else None)
+        await i.response.send_message("✅ Голосовой канал обзвона сохранён.",ephemeral=True)
+
 class TicketPageButton(discord.ui.Button):
     def __init__(self,cog,page):
         self.cog=cog; self.page=page
@@ -286,6 +304,8 @@ class TicketSettingsPage2(SimpleSettings):
     def __init__(self,cog):
         super().__init__(cog)
         self.add_item(TicketMemberRoleSetting())
+        self.add_item(TicketCallRoleSetting())
+        self.add_item(TicketCallChannelSetting())
         self.add_item(TicketQuestionsButton())
         self.add_item(TicketPublishButton())
         self.add_item(TicketPageButton(cog,page=2))
@@ -295,11 +315,13 @@ class TicketSettingsPage2(SimpleSettings):
         role=guild.get_role(settings['member_role_id']) if settings['member_role_id'] else None
         questions=get_ticket_questions(guild.id)
         question_text='\n'.join(f"{row['question_number']}. {row['question']}" for row in questions) or 'Не настроены'
-        return discord.Embed(title='🎫 Тикеты — дополнительные настройки',description=f'**Роль принятого:** {role.mention if role else "Не настроено"}\n\n**Вопросы анкеты:**\n{question_text}\n\nЗдесь можно изменить вопросы и опубликовать панель подачи заявки.',color=discord.Color.blue())
+        call_role=guild.get_role(settings["call_role_id"]) if settings["call_role_id"] else None
+        call_channel=guild.get_channel(settings["call_channel_id"]) if settings["call_channel_id"] else None
+        return discord.Embed(title='🎫 Тикеты — дополнительные настройки',description=f'**Роль принятого:** {role.mention if role else "Не настроено"}\n**Роль обзвона:** {call_role.mention if call_role else "Не настроено"}\n**Голосовой канал обзвона:** {call_channel.mention if call_channel else "Не настроено"}\n\n**Вопросы анкеты:**\n{question_text}\n\nНастройте роль и голосовой канал обзвона, вопросы и публикацию панели.',color=discord.Color.blue())
 
 class TicketQuestionsButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label='📝 Настроить вопросы анкеты',style=discord.ButtonStyle.secondary,row=1,custom_id='savage:ticket:questions')
+        super().__init__(label='📝 Настроить вопросы анкеты',style=discord.ButtonStyle.secondary,row=3,custom_id='savage:ticket:questions')
     async def callback(self,i):
         if not i.guild or not has_group_access(i.user,'settings'):
             return await i.response.send_message('❌ Нет доступа.',ephemeral=True)
@@ -307,7 +329,7 @@ class TicketQuestionsButton(discord.ui.Button):
 
 class TicketPublishButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label='📨 Опубликовать панель заявок',style=discord.ButtonStyle.success,row=2,custom_id='savage:ticket:publish')
+        super().__init__(label='📨 Опубликовать панель заявок',style=discord.ButtonStyle.success,row=3,custom_id='savage:ticket:publish')
     async def callback(self,i):
         if not i.guild or not has_group_access(i.user,'settings'):
             return await i.response.send_message('❌ Нет доступа.',ephemeral=True)
@@ -364,7 +386,8 @@ class ReactionSettings(SimpleSettings):
         self.add_item(ChannelSetting('reaction_channel_id','Канал обычных реакций',row=0))
         self.add_item(ChannelSetting('reaction_vzp_channel_id','Канал VZP',row=1))
         self.add_item(RoleSetting('reaction_access_role_id','Право запуска наборов: роль и выше',row=2))
-        self.add_item(PublishReactionPanelButton(cog,row=3))
+        self.add_item(RoleSetting('reaction_vzp_tag_role_id','Роль для упоминания VZP',row=3))
+        self.add_item(PublishReactionPanelButton(cog,row=4))
         self.add_back('manage')
 
 class PublishReactionPanelButton(discord.ui.Button):
@@ -512,7 +535,7 @@ class AdminPanel(commands.Cog):
         return discord.Embed(title='📄 Настройки контрактов',description=f"Канал: {mention_channel(g,c.get('contract_channel_id'))}\nРоль семьи: {mention_role(g,c.get('contract_role_id') or c.get('family_role_id'))}\n\nПрава запуска и записи настраиваются ниже по группам ролей.",color=discord.Color.blurple())
     def reactions_embed(self,g):
         c=get_config(g.id)
-        return discord.Embed(title='🎬 Настройки реакций',description=f"Обычные реакции: {mention_channel(g,c.get('reaction_channel_id'))}\nVZP: {mention_channel(g,c.get('reaction_vzp_channel_id'))}\nРоль запуска наборов: {mention_role(g,c.get('reaction_access_role_id'))} и все роли выше.\n\nНажмите «Опубликовать панель запуска наборов», чтобы участники с нужной ролью могли запускать наборы кнопками.",color=discord.Color.blurple())
+        return discord.Embed(title='🎬 Настройки реакций',description=f"Обычные реакции: {mention_channel(g,c.get('reaction_channel_id'))}\nVZP: {mention_channel(g,c.get('reaction_vzp_channel_id'))}\nРоль упоминания VZP: {mention_role(g,c.get('reaction_vzp_tag_role_id'))}\nРоль запуска наборов: {mention_role(g,c.get('reaction_access_role_id'))} и все роли выше.\n\nНажмите «Опубликовать панель запуска наборов», чтобы участники с нужной ролью могли запускать наборы кнопками.",color=discord.Color.blurple())
     def start_unmute_cycle(self,member):
         if member.voice and member.voice.self_deaf: self.unmute_targets[member.id]=member.voice.channel.id
     def cog_unload(self):
