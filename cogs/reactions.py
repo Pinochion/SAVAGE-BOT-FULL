@@ -312,11 +312,12 @@ def get_reaction_mentions(guild):
     return " ".join(role.mention for role in get_reaction_roles(guild))
 
 
-VZP_TAG_ROLE_ID = 1403086533929599059
-
-
 def get_vzp_tag_mention(guild):
-    role = guild.get_role(VZP_TAG_ROLE_ID)
+    role_id = get_config(guild.id).get("reaction_vzp_tag_role_id")
+    try:
+        role = guild.get_role(int(role_id)) if role_id else None
+    except (TypeError, ValueError):
+        role = None
     return role.mention if role else ""
 
 
@@ -557,7 +558,7 @@ class ReactionModal(discord.ui.Modal, title="Набор на контент"):
                 role_mentions = get_vzp_tag_mention(interaction.guild)
                 if not role_mentions:
                     return await interaction.response.send_message(
-                        f"❌ Роль VZP `{VZP_TAG_ROLE_ID}` не найдена на сервере.",
+                        "❌ Роль для упоминания VZP не настроена в админ-панели → Реакции.",
                         ephemeral=True,
                     )
             else:
