@@ -24,12 +24,6 @@ PANEL_IMAGE_URL = (
     "Chat-GPT-Image-19-avg-2026-g-15-20-33.png"
 )
 
-# Роль, которая выдаётся кандидату при нажатии «Обзвон»
-CALL_ROLE_ID = 1498024705989542011
-
-# Канал, в который всегда вызывается кандидат
-CALL_CHANNEL_ID = 1498022964610863255
-
 DEFAULT_QUESTIONS = {
     1: "Ваш никнейм",
     2: "Ваш OOC возраст",
@@ -63,7 +57,9 @@ def init_database():
             member_role_id INTEGER,
             open_category_id INTEGER,
             closed_category_id INTEGER,
-            panel_channel_id INTEGER
+            panel_channel_id INTEGER,
+            call_role_id INTEGER,
+            call_channel_id INTEGER
         )
     """)
 
@@ -87,6 +83,11 @@ def init_database():
             ALTER TABLE ticket_settings
             ADD COLUMN panel_channel_id INTEGER
         """)
+
+    if "call_role_id" not in columns:
+        cursor.execute("ALTER TABLE ticket_settings ADD COLUMN call_role_id INTEGER")
+    if "call_channel_id" not in columns:
+        cursor.execute("ALTER TABLE ticket_settings ADD COLUMN call_channel_id INTEGER")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ticket_questions (
@@ -182,6 +183,8 @@ def update_setting(
         "open_category_id",
         "closed_category_id",
         "panel_channel_id",
+        "call_role_id",
+        "call_channel_id",
     }
 
     if column not in allowed_columns:
@@ -1712,18 +1715,17 @@ class Tickets(commands.Cog):
             return
 
         # ----------------------------------------------------
-        # Получаем фиксированную роль обзвона
+        # Получаем роль обзвона из настроек сервера
         # ----------------------------------------------------
 
-        call_role = guild.get_role(
-            CALL_ROLE_ID
-        )
+        ticket_settings = get_settings(guild.id)
+        call_role_id = ticket_settings["call_role_id"]
+        call_role = guild.get_role(int(call_role_id)) if call_role_id else None
 
         if not call_role:
 
             await interaction.response.send_message(
-                "❌ Роль для обзвона не найдена.\n"
-                f"ID роли: `{CALL_ROLE_ID}`",
+                "❌ Роль для обзвона не настроена. Выберите её в админ-панели → Тикеты → дополнительные настройки.",
                 ephemeral=True
             )
 
@@ -1770,26 +1772,24 @@ class Tickets(commands.Cog):
                 return
 
         # ----------------------------------------------------
-        # Получаем фиксированный канал обзвона
+        # Получаем голосовой канал обзвона из настроек сервера
         # ----------------------------------------------------
 
-        call_channel = guild.get_channel(
-            CALL_CHANNEL_ID
-        )
+        call_channel_id = ticket_settings["call_channel_id"]
+        call_channel = guild.get_channel(int(call_channel_id)) if call_channel_id else None
 
         if not call_channel:
 
             try:
 
                 call_channel = await guild.fetch_channel(
-                    CALL_CHANNEL_ID
+                    int(call_channel_id)
                 )
 
             except discord.NotFound:
 
                 await interaction.response.send_message(
-                    "❌ Канал обзвона не найден.\n"
-                    f"ID канала: `{CALL_CHANNEL_ID}`",
+                    "❌ Голосовой канал обзвона не настроен или не найден. Выберите его в админ-панели → Тикеты → дополнительные настройки.",
                     ephemeral=True
                 )
 
